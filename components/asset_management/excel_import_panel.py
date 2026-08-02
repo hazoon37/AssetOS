@@ -12,7 +12,8 @@ def render_excel_import_panel() -> None:
     st.markdown("#### 📥 Excel 자산 DB 가져오기")
     st.caption(
         "AssetOS 표준 양식의 `Assets` 시트를 읽습니다. "
-        "가져오기를 실행하면 현재 자산 목록 전체가 Excel 내용으로 교체됩니다."
+        "파일을 선택해도 DB는 변경되지 않습니다. 미리보기와 검증을 확인한 뒤 "
+        "'Apply Changes'를 눌러야 현재 자산 목록 전체가 Excel 내용으로 교체됩니다."
     )
 
     uploaded_file = st.file_uploader(
@@ -46,16 +47,17 @@ def render_excel_import_panel() -> None:
         st.caption(f"추가 경고 {len(validation.warnings) - 10:,}건이 있습니다.")
 
     confirmed = st.checkbox(
-        "현재 DB를 백업한 뒤 Excel 내용으로 전체 교체하는 것에 동의합니다.",
+        "현재 DB를 백업한 뒤 미리보기 내용으로 전체 교체하는 것에 동의합니다.",
         key="asset_excel_replace_confirm",
     )
 
     if st.button(
-        "Excel 내용으로 자산 DB 업데이트",
+        "Apply Changes",
         type="primary",
         use_container_width=True,
         disabled=not confirmed,
         key="asset_excel_import_button",
+        help="현재 DB를 먼저 백업한 뒤, 미리보기의 데이터로 전체 교체합니다.",
     ):
         with st.spinner("기존 DB를 백업하고 Excel 데이터를 반영하고 있습니다..."):
             result = import_asset_excel(file_bytes)
