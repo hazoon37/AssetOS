@@ -47,6 +47,22 @@ def test_validate_asset_excel_missing_required_column() -> None:
     assert result.errors
 
 
+def test_validate_minimal_smart_import_row() -> None:
+    dataframe = pd.DataFrame([{"자산명": "Apple", "수량": 2}])
+    result = validate_asset_excel(_excel_bytes(dataframe))
+    assert result.success is True
+    assert result.rows[0]["asset_name"] == "Apple"
+    assert result.rows[0]["quantity"] == 2.0
+    assert result.rows[0]["_average_price_missing"] is True
+
+
+def test_validate_minimal_row_requires_quantity_value() -> None:
+    dataframe = pd.DataFrame([{"자산명": "Apple", "수량": None}])
+    result = validate_asset_excel(_excel_bytes(dataframe))
+    assert result.success is False
+    assert any("수량이 비어" in error for error in result.errors)
+
+
 def test_template_matches_excel_schema() -> None:
     template_bytes = build_asset_template_excel()
     template = pd.read_excel(BytesIO(template_bytes), sheet_name="Assets")

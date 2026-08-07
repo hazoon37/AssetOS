@@ -12,6 +12,7 @@ from services.portfolio_service import (
     get_portfolio_analysis,
 )
 from ui.asset_table import render_asset_management_view
+from ui.components.metric_card import render_ai_card
 from ui.layout import render_exchange_panel
 from ui.portfolio.portfolio_views import (
     render_allocation_section,
@@ -29,16 +30,10 @@ from ui.portfolio.report_views import render_portfolio_report
 from ui.theme import apply_theme
 
 
-st.set_page_config(
-    page_title="AssetOS 포트폴리오",
-    page_icon="💼",
-    layout="wide",
-)
-
 apply_theme()
 create_tables()
 
-st.title("💼 포트폴리오")
+st.title("💼 포트폴리오 분석")
 st.write(
     "보유자산 등록·수정·삭제와 구성·위험 분석을 한 화면에서 관리합니다. "
     "자산 정보가 변경되면 포트폴리오 분석도 함께 갱신됩니다."
@@ -135,6 +130,12 @@ with allocation_tab:
             )
         with sub_tabs[4]:
             render_asset_allocation(result.get("assets", []))
+
+        st.markdown("### AI Insight")
+        render_ai_card(
+            "✨ AI Insight",
+            "포트폴리오 구성과 분산 상태를 해석한 AI 인사이트가 이곳에 표시될 예정입니다.",
+        )
 
 with risk_tab:
     if not result.get("success"):

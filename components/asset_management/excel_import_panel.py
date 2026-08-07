@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import pandas as pd
 import streamlit as st
 
-from services.excel_asset_service import import_asset_excel, validate_asset_excel
+from services.excel_asset_service import import_asset_rows, validate_asset_excel
 from services.portfolio_service import clear_portfolio_analysis_cache
+from services.smart_import_service import enrich_import_row
 
 
 def render_excel_import_panel() -> None:
@@ -30,21 +32,63 @@ def render_excel_import_panel() -> None:
     file_bytes = uploaded_file.getvalue()
     validation = validate_asset_excel(file_bytes)
 
-    if validation.preview.empty is False:
-        st.write("**가져오기 미리보기**")
-        st.dataframe(validation.preview, use_container_width=True, hide_index=True)
-
     if validation.errors:
+        if validation.preview.empty is False:
+            st.write("**파일 내용 미리보기**")
+            st.dataframe(validation.preview, use_container_width=True, hide_index=True)
         for error in validation.errors:
             st.error(error)
         return
 
-    st.success(f"검증 완료: {len(validation.rows):,}개 자산을 가져올 수 있습니다.")
+    st.success(f"기본 검증 완료: {len(validation.rows):,}개 자산을 확인했습니다.")
 
     for warning in validation.warnings[:10]:
         st.warning(warning)
     if len(validation.warnings) > 10:
         st.caption(f"추가 경고 {len(validation.warnings) - 10:,}건이 있습니다.")
+
+    resolved_rows: list[dict[str, object]] = []
+    lookup_warnings: list[str] = []
+    with st.spinner("자산 정보와 현재가를 자동 조회하고 있습니다..."):
+        for index, row in enumerate(validation.rows):
+            result = enrich_import_row(row)
+            resolved = dict(result.row)
+            resolved["resolution_status"] = result.status
+            resolved["current_value"] = result.current_value
+            resolved_rows.append(resolved)
+            lookup_warnings.extend(
+                f"{index + 2}행 '{row['asset_name']}': {warning}"
+                for warning in result.warnings
+            )
+
+    preview_rows = pd.DataFrame([
+        {
+            "Asset": row.get("asset_name", ""),
+            "Ticker": row.get("symbol", "") or "-",
+            "Current Price": row.get("current_price", 0.0),
+            "Currency": row.get("currency", "") or "-",
+            "Status": "Resolved" if row.get("resolution_status") == "resolved" else "Needs Review",
+        }
+        for row in resolved_rows
+    ])
+    st.write("**자동 조회 결과**")
+    st.dataframe(
+        preview_rows,
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    final_rows: list[dict[str, object]] = []
+    for source in resolved_rows:
+        final = dict(source)
+        final.pop("resolution_status", None)
+        final.pop("current_value", None)
+        final_rows.append(final)
+
+    for warning in lookup_warnings[:10]:
+        st.warning(warning)
+    if len(lookup_warnings) > 10:
+        st.caption(f"추가 자동조회 경고 {len(lookup_warnings) - 10:,}건이 있습니다.")
 
     confirmed = st.checkbox(
         "현재 DB를 백업한 뒤 미리보기 내용으로 전체 교체하는 것에 동의합니다.",
@@ -60,7 +104,7 @@ def render_excel_import_panel() -> None:
         help="현재 DB를 먼저 백업한 뒤, 미리보기의 데이터로 전체 교체합니다.",
     ):
         with st.spinner("기존 DB를 백업하고 Excel 데이터를 반영하고 있습니다..."):
-            result = import_asset_excel(file_bytes)
+            result = import_asset_rows(final_rows, validation.warnings)
 
         if result.get("success"):
             clear_portfolio_analysis_cache()

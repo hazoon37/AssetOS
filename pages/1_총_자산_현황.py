@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from components.asset_management.asset_manager_panel import render_asset_manager_panel
 from database.db import (
     create_tables,
     get_assets,
@@ -17,21 +18,12 @@ from services.market_price_service import (
     get_market_price,
 )
 from ui.components.metric_card import (
-    render_metric_card,
+    render_ai_card,
+    render_metric_grid,
     render_page_header,
 )
 from ui.theme import ASSET_COLORS, apply_theme
 
-
-# ==================================================
-# 페이지 기본 설정
-# ==================================================
-
-st.set_page_config(
-    page_title="AssetOS 대시보드",
-    page_icon="📊",
-    layout="wide",
-)
 
 apply_theme()
 create_tables()
@@ -224,13 +216,23 @@ def calculate_portfolio(
 # 페이지 제목
 # ==================================================
 
-render_page_header(
-    title="내 자산 현황",
-    subtitle=(
-        "전체 자산을 원화 기준으로 요약하고, "
-        "금융자산 구성과 손익을 한눈에 확인합니다."
-    ),
-)
+@st.dialog("➕ 자산관리", width="large")
+def open_asset_manager() -> None:
+    render_asset_manager_panel()
+
+
+header_column, action_column = st.columns([5, 1], vertical_alignment="center")
+with header_column:
+    render_page_header(
+        title="총 자산 현황",
+        subtitle=(
+            "전체 자산을 원화 기준으로 요약하고, "
+            "금융자산 구성과 손익을 한눈에 확인합니다."
+        ),
+    )
+with action_column:
+    if st.button("➕ 자산관리", use_container_width=True):
+        open_asset_manager()
 
 
 # ==================================================
@@ -254,7 +256,7 @@ if assets_df.empty:
 
     st.info(
         "아직 등록된 자산이 없습니다. "
-        "자산관리 화면에서 첫 자산을 등록해 주세요."
+        "상단의 자산관리 버튼에서 Excel 데이터를 가져와 주세요."
     )
 
     st.stop()
@@ -636,43 +638,38 @@ asset_count = len(
 )
 
 
-metric1, metric2, metric3, metric4 = st.columns(4)
-
 profit_tone = (
     "positive" if total_profit_krw > 0
     else "negative" if total_profit_krw < 0
     else "neutral"
 )
 
-with metric1:
-    render_metric_card(
-        "총 평가자산",
-        format_krw(total_value_krw),
-        note=f"총수익률 {total_return_rate:+.2f}%",
-        tone=profit_tone,
-    )
-
-with metric2:
-    render_metric_card(
-        "총 매입금액",
-        format_krw(total_purchase_krw),
-        note="현재 표시 기준의 투자원금",
-    )
-
-with metric3:
-    render_metric_card(
-        "총 평가손익",
-        format_krw(total_profit_krw),
-        note=f"{total_profit_krw:+,.0f}원",
-        tone=profit_tone,
-    )
-
-with metric4:
-    render_metric_card(
-        "등록 자산",
-        f"{asset_count:,}개",
-        note=("부동산 제외 기준" if exclude_real_estate else "전체 자산 기준"),
-    )
+render_metric_grid(
+    [
+        {
+            "label": "Total Asset",
+            "value": format_krw(total_value_krw),
+            "note": f"{asset_count:,}개 자산",
+        },
+        {
+            "label": "Investment Principal",
+            "value": format_krw(total_purchase_krw),
+            "note": "현재 표시 기준 투자원금",
+        },
+        {
+            "label": "Total Profit",
+            "value": format_krw(total_profit_krw),
+            "note": f"{total_profit_krw:+,.0f}원",
+            "tone": profit_tone,
+        },
+        {
+            "label": "Total Return %",
+            "value": f"{total_return_rate:+.2f}%",
+            "note": "투자원금 대비 누적 수익률",
+            "tone": profit_tone,
+        },
+    ]
+)
 
 st.divider()
 
@@ -705,207 +702,38 @@ if not asset_type_summary.empty:
 
 
 # ==================================================
-# 통화별 요약
+# 포트폴리오 배분
 # ==================================================
 
-currency_summary = (
-    valid_assets_df.groupby(
-        "currency",
-        as_index=False,
-    )["원화 평가금액"]
-    .sum()
-    .sort_values(
-        "원화 평가금액",
-        ascending=False,
-    )
-)
-
-if not currency_summary.empty:
-
-    currency_summary["통화명"] = (
-        currency_summary["currency"].map(
-            CURRENCY_NAMES
-        ).fillna(
-            currency_summary["currency"]
-        )
-    )
-
-    currency_summary["표시명"] = (
-        currency_summary["currency"]
-        + " · "
-        + currency_summary["통화명"]
-    )
-
-    currency_summary["비중"] = (
-        currency_summary["원화 평가금액"]
-        / currency_summary[
-            "원화 평가금액"
-        ].sum()
-        * 100
-    )
-
-
-# ==================================================
-# 자산·통화 비중 차트
-# ==================================================
-
-chart_column1, chart_column2 = (
-    st.columns(2)
-)
-
-with chart_column1:
-
-    st.subheader(
-        "자산 종류별 비중"
-    )
-
-    if asset_type_summary.empty:
-
-        st.info(
-            "표시할 자산 데이터가 없습니다."
-        )
-
-    else:
-
-        asset_pie_chart = px.pie(
-            asset_type_summary,
-            names="asset_type",
-            values="원화 평가금액",
-            hole=0.62,
-            color="asset_type",
-            color_discrete_map=ASSET_COLORS,
-        )
-
-        asset_pie_chart.update_traces(
-            textposition="inside",
-            texttemplate=(
-                "%{label}<br>%{percent}"
-            ),
-            hovertemplate=(
-                "%{label}<br>"
-                "평가금액: ₩ %{value:,.0f}<br>"
-                "비중: %{percent}"
-                "<extra></extra>"
-            ),
-        )
-
-        asset_pie_chart.update_layout(
-            margin={"l": 10, "r": 10, "t": 18, "b": 10},
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            legend_title_text="",
-            font={"color": "#334155", "size": 12},
-        )
-
-        st.plotly_chart(
-            asset_pie_chart,
-            use_container_width=True,
-        )
-
-
-with chart_column2:
-
-    st.subheader(
-        "통화별 비중"
-    )
-
-    if currency_summary.empty:
-
-        st.info(
-            "표시할 통화 데이터가 없습니다."
-        )
-
-    else:
-
-        currency_pie_chart = px.pie(
-            currency_summary,
-            names="표시명",
-            values="원화 평가금액",
-            hole=0.62,
-        )
-
-        currency_pie_chart.update_traces(
-            textposition="inside",
-            texttemplate=(
-                "%{label}<br>%{percent}"
-            ),
-            hovertemplate=(
-                "%{label}<br>"
-                "원화 환산금액: ₩ %{value:,.0f}<br>"
-                "비중: %{percent}"
-                "<extra></extra>"
-            ),
-        )
-
-        currency_pie_chart.update_layout(
-            margin={"l": 10, "r": 10, "t": 18, "b": 10},
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            legend_title_text="",
-            font={"color": "#334155", "size": 12},
-        )
-
-        st.plotly_chart(
-            currency_pie_chart,
-            use_container_width=True,
-        )
-
-
-st.divider()
-
-
-# ==================================================
-# 자산 종류별 평가금액
-# ==================================================
-
-st.subheader(
-    "자산 종류별 평가금액"
-)
+st.subheader("Portfolio Allocation")
 
 if asset_type_summary.empty:
-
-    st.info(
-        "표시할 평가금액이 없습니다."
-    )
-
+    st.info("표시할 자산 데이터가 없습니다.")
 else:
-
-    asset_bar_chart = px.bar(
+    asset_pie_chart = px.pie(
         asset_type_summary,
-        x="asset_type",
-        y="원화 평가금액",
-        text="원화 평가금액",
-        labels={
-            "asset_type": "자산 종류",
-            "원화 평가금액": "원화 평가금액",
-        },
+        names="asset_type",
+        values="원화 평가금액",
+        hole=0.62,
+        color="asset_type",
+        color_discrete_map=ASSET_COLORS,
     )
-
-    asset_bar_chart.update_traces(
-        texttemplate="₩ %{text:,.0f}",
-        textposition="outside",
+    asset_pie_chart.update_traces(
+        textposition="inside",
+        texttemplate="%{label}<br>%{percent}",
         hovertemplate=(
-            "%{x}<br>"
-            "평가금액: ₩ %{y:,.0f}"
-            "<extra></extra>"
+            "%{label}<br>평가금액: ₩ %{value:,.0f}<br>"
+            "비중: %{percent}<extra></extra>"
         ),
     )
-
-    asset_bar_chart.update_layout(
-        xaxis_title="",
-        yaxis_title="원화 평가금액",
-        yaxis_tickformat=",",
-        margin={"l": 10, "r": 10, "t": 20, "b": 10},
+    asset_pie_chart.update_layout(
+        margin={"l": 10, "r": 10, "t": 18, "b": 10},
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
+        legend_title_text="",
         font={"color": "#334155", "size": 12},
-        yaxis={"gridcolor": "#E2E8F0"},
     )
-
-    st.plotly_chart(
-        asset_bar_chart,
-        use_container_width=True,
-    )
+    st.plotly_chart(asset_pie_chart, use_container_width=True)
 
 
 st.divider()
@@ -1090,6 +918,12 @@ with st.container(border=True):
                     ),
                 },
             )
+
+st.markdown("### AI Summary")
+render_ai_card(
+    "✨ AI Summary",
+    "포트폴리오 변화와 주요 리스크를 요약하는 AI 브리핑이 이곳에 표시될 예정입니다.",
+)
 
 st.divider()
 

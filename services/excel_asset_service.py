@@ -17,12 +17,8 @@ from database.db import DB_PATH, get_assets, replace_all_assets
 
 SHEET_NAME = "Assets"
 REQUIRED_COLUMNS = {
-    "자산종류",
     "자산명",
     "수량",
-    "평균단가",
-    "현재가",
-    "통화",
 }
 TEMPLATE_COLUMNS = ["자산종류", "자산명", "수량", "평균단가", "현재가", "통화"]
 
@@ -180,7 +176,9 @@ def build_asset_template_excel() -> bytes:
         guide_rows = [
             ("AssetOS Excel 작성가이드", ""),
             ("사용 방법", "Assets 시트의 회색 예시 행을 삭제한 뒤 자산을 한 행씩 입력하세요."),
-            ("필수 항목 (*)", "자산종류 *, 자산명 *, 수량 *, 평균단가 *, 현재가 *, 통화 *"),
+            ("필수 항목 (*)", "자산명 *, 수량 *"),
+            ("자동 조회", "자산종류, 티커, 현재가, 통화, 거래소, 국가는 업로드 후 가능한 경우 자동으로 조회합니다."),
+            ("선택 입력", "평균단가는 선택 사항입니다. 입력하면 평가손익과 수익률을 계산할 수 있습니다."),
             ("업로드 과정", "Asset Manager에서 파일 선택 → 미리보기 및 오류 확인 → 동의 → Apply Changes"),
             ("주의", "열 이름과 Assets 시트 이름을 변경하지 마세요. 적용 전 현재 DB가 자동 백업됩니다."),
             ("간단한 예", "미국주식 | Apple | 2 | 180 | 210 | USD"),
@@ -259,18 +257,18 @@ def validate_asset_excel(file: BinaryIO | bytes) -> ExcelValidationResult:
         asset_type = _clean_text(excel_row.get("자산종류"))
 
         # Template spare rows are ignored.
-        if not asset_name and not asset_type:
+        if not asset_name and not _clean_text(excel_row.get("수량")):
             continue
 
         if not asset_name:
             errors.append(f"{row_number}행: 자산명이 비어 있습니다.")
             continue
-        if not asset_type:
-            errors.append(f"{row_number}행: 자산종류가 비어 있습니다.")
+        raw_quantity = excel_row.get("수량")
+        if raw_quantity is None or pd.isna(raw_quantity) or str(raw_quantity).strip() == "":
+            errors.append(f"{row_number}행 '{asset_name}': 수량이 비어 있습니다.")
             continue
-
         try:
-            quantity = _to_float(excel_row.get("수량"), field="수량", row_number=row_number)
+            quantity = _to_float(raw_quantity, field="수량", row_number=row_number)
             average_price = _to_float(excel_row.get("평균단가"), field="평균단가", row_number=row_number)
             current_price = _to_float(excel_row.get("현재가"), field="현재가", row_number=row_number)
             leverage_multiple = _to_float(
@@ -289,9 +287,6 @@ def validate_asset_excel(file: BinaryIO | bytes) -> ExcelValidationResult:
             warnings.append(f"{row_number}행 '{asset_name}': 수량이 0입니다.")
 
         currency = _clean_text(excel_row.get("통화")).upper()
-        if not currency:
-            errors.append(f"{row_number}행 '{asset_name}': 통화가 비어 있습니다.")
-            continue
 
         row = {
             "asset_type": asset_type,
@@ -313,6 +308,11 @@ def validate_asset_excel(file: BinaryIO | bytes) -> ExcelValidationResult:
             "leverage_multiple": leverage_multiple,
             "data_source": _clean_text(excel_row.get("데이터출처")) or "Excel Import",
             "tags": _clean_text(excel_row.get("태그")),
+            "_average_price_missing": (
+                excel_row.get("평균단가") is None
+                or pd.isna(excel_row.get("평균단가"))
+                or str(excel_row.get("평균단가")).strip() == ""
+            ),
         }
         rows.append(row)
 
@@ -366,4 +366,25 @@ def import_asset_excel(file: BinaryIO | bytes) -> dict[str, Any]:
         "backup_path": str(backup_path) if backup_path else None,
         "errors": [],
         "warnings": validation.warnings,
+    }
+
+
+def import_asset_rows(rows: list[dict[str, Any]], warnings: list[str] | None = None) -> dict[str, Any]:
+    """Apply already validated and resolved Smart Import rows atomically."""
+    if not rows:
+        return {
+            "success": False,
+            "imported_count": 0,
+            "backup_path": None,
+            "errors": ["반영할 자산이 없습니다."],
+            "warnings": warnings or [],
+        }
+    backup_path = backup_database()
+    replace_all_assets(rows)
+    return {
+        "success": True,
+        "imported_count": len(rows),
+        "backup_path": str(backup_path) if backup_path else None,
+        "errors": [],
+        "warnings": warnings or [],
     }

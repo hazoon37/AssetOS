@@ -98,6 +98,16 @@ def apply_theme() -> None:
             border-radius: 16px;
             padding: 1.05rem 1.1rem;
             box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045);
+            min-height: 132px;
+            height: 100%;
+            box-sizing: border-box;
+        }}
+
+        .assetos-kpi-grid {{
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 1.15rem;
+            margin: 1.25rem 0 1.75rem;
         }}
 
         .assetos-metric-label {{
@@ -109,7 +119,7 @@ def apply_theme() -> None:
 
         .assetos-metric-value {{
             color: var(--assetos-text);
-            font-size: clamp(1.25rem, 1.8vw, 1.78rem);
+            font-size: clamp(1.44rem, 2.05vw, 2.05rem);
             font-weight: 800;
             line-height: 1.15;
             letter-spacing: -0.035em;
@@ -174,6 +184,29 @@ def apply_theme() -> None:
         hr {{
             border-color: var(--assetos-border) !important;
             margin: 1.25rem 0 !important;
+        }}
+
+        @media (max-width: 1024px) {{
+            .assetos-kpi-grid {{
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }}
+            .block-container {{
+                padding-left: 1.25rem;
+                padding-right: 1.25rem;
+            }}
+        }}
+
+        @media (max-width: 640px) {{
+            .assetos-kpi-grid {{
+                grid-template-columns: 1fr;
+                gap: 0.8rem;
+            }}
+            .assetos-card {{ min-height: 116px; }}
+            .assetos-page-title {{ font-size: 1.65rem; }}
+            .block-container {{
+                padding-left: 0.8rem;
+                padding-right: 0.8rem;
+            }}
         }}
         </style>
         """,

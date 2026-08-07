@@ -5,6 +5,30 @@ import html
 import streamlit as st
 
 
+def _metric_card_html(
+    label: str,
+    value: str,
+    note: str = "",
+    tone: str = "neutral",
+) -> str:
+    tone_class = {
+        "positive": "assetos-positive",
+        "negative": "assetos-negative",
+        "neutral": "assetos-neutral",
+    }.get(tone, "assetos-neutral")
+    note_html = (
+        f'<div class="assetos-metric-note {tone_class}">{html.escape(note)}</div>'
+        if note
+        else ""
+    )
+    return (
+        '<div class="assetos-card">'
+        f'<div class="assetos-metric-label">{html.escape(label)}</div>'
+        f'<div class="assetos-metric-value">{html.escape(value)}</div>'
+        f'{note_html}</div>'
+    )
+
+
 def render_metric_card(
     label: str,
     value: str,
@@ -14,30 +38,33 @@ def render_metric_card(
 ) -> None:
     """Render a compact metric card without external UI dependencies."""
 
-    tone_class = {
-        "positive": "assetos-positive",
-        "negative": "assetos-negative",
-        "neutral": "assetos-neutral",
-    }.get(tone, "assetos-neutral")
-
-    safe_label = html.escape(label)
-    safe_value = html.escape(value)
-    safe_note = html.escape(note)
-
-    note_html = (
-        f'<div class="assetos-metric-note {tone_class}">{safe_note}</div>'
-        if safe_note
-        else ""
+    st.markdown(
+        _metric_card_html(label, value, note, tone),
+        unsafe_allow_html=True,
     )
 
+
+def render_metric_grid(metrics: list[dict[str, str]]) -> None:
+    """Render KPI cards in a responsive 4/2/1-column grid."""
+    cards = "".join(
+        _metric_card_html(
+            metric["label"],
+            metric["value"],
+            metric.get("note", ""),
+            metric.get("tone", "neutral"),
+        )
+        for metric in metrics
+    )
+    st.markdown(f'<div class="assetos-kpi-grid">{cards}</div>', unsafe_allow_html=True)
+
+
+def render_ai_card(title: str, text: str) -> None:
+    """Render a shared placeholder card for future AI-generated guidance."""
     st.markdown(
-        f"""
-        <div class="assetos-card">
-            <div class="assetos-metric-label">{safe_label}</div>
-            <div class="assetos-metric-value">{safe_value}</div>
-            {note_html}
-        </div>
-        """,
+        '<div class="assetos-card">'
+        f'<div class="assetos-section-title">{html.escape(title)}</div>'
+        f'<div class="assetos-page-subtitle">{html.escape(text)}</div>'
+        '</div>',
         unsafe_allow_html=True,
     )
 

@@ -15,13 +15,6 @@ from ui.analysis.currency_views import (
 )
 
 
-st.set_page_config(
-    page_title="AssetOS 종목 분석",
-    page_icon="🔍",
-    layout="wide",
-)
-
-
 ASSET_TYPES = [
     "국내주식",
     "미국주식",
