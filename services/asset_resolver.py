@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from difflib import SequenceMatcher
-import re
 from typing import Protocol
 
 import streamlit as st
@@ -16,7 +17,6 @@ from services.asset_master_service import (
     search_asset_master,
     upsert_asset_master,
 )
-
 
 AUTO_CONFIDENCE_THRESHOLD = 0.82
 CANDIDATE_CONFIDENCE_THRESHOLD = 0.45
@@ -159,7 +159,7 @@ def _lookup_yahoo_ticker(symbol: str) -> ResolvedAsset | None:
         return None
     try:
         info = yf.Ticker(normalized).get_info()
-    except Exception:
+    except (AttributeError, KeyError, OSError, RuntimeError, TypeError, ValueError):
         return None
     if not isinstance(info, dict):
         return None
@@ -203,7 +203,7 @@ def _search_yahoo(query: str) -> list[ResolvedAsset]:
             timeout=8,
             raise_errors=False,
         ).quotes
-    except Exception:
+    except (AttributeError, KeyError, OSError, RuntimeError, TypeError, ValueError):
         return []
 
     candidates: list[ResolvedAsset] = []
@@ -360,7 +360,7 @@ def learn_asset_alias(asset_name: str, ticker: str) -> bool:
     return save_learned_alias(asset_name, resolution.asset.ticker)
 
 
-def enrich_asset_with_resolver(asset: dict[str, object]) -> dict[str, object]:
+def enrich_asset_with_resolver(asset: Mapping[str, object]) -> dict[str, object]:
     """Fill portfolio metadata through the shared local resolver boundary."""
     enriched = dict(asset)
     asset_type = str(enriched.get("asset_type") or "").strip()

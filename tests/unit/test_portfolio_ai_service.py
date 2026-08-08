@@ -87,7 +87,11 @@ def test_build_rule_cards_always_returns_nonempty_cards() -> None:
             "cash_flexibility": 100,
         },
     }
-    balanced["allocations"]["asset_class"][2]["weight"] = 0.05
+    allocations = balanced["allocations"]
+    assert isinstance(allocations, dict)
+    asset_classes = allocations["asset_class"]
+    assert isinstance(asset_classes, list)
+    asset_classes[2]["weight"] = 0.05
     cards = build_rule_cards(balanced, calculate_metrics(balanced))
     assert all(cards)
 

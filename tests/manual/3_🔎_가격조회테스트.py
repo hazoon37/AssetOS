@@ -10,7 +10,6 @@ from services.market_price_service import (
     get_market_price,
 )
 
-
 st.set_page_config(
     page_title="가격 조회 테스트",
     page_icon="🔎",

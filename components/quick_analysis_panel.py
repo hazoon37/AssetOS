@@ -56,18 +56,28 @@ def _resolved_results(
         source_dataframe=source_dataframe,
     )
     for index, (source, result) in enumerate(zip(rows, results), start=2):
-        row_number = int(source.get("_excel_row_number") or index)
+        stored_row_number = source.get("_excel_row_number")
+        row_number = (
+            int(stored_row_number)
+            if isinstance(stored_row_number, (int, float, str))
+            else index
+        )
         warnings.extend(f"{row_number}행 '{source['asset_name']}': {item}" for item in result.warnings)
     return results, warnings
 
 
 def _render_analysis_summary(result: dict[str, object]) -> None:
-    summary = result.get("summary", {})
+    summary_value = result.get("summary")
+    summary = summary_value if isinstance(summary_value, dict) else {}
+    asset_count = summary.get("asset_count")
+    formatted_asset_count = (
+        int(asset_count) if isinstance(asset_count, (int, float, str)) else 0
+    )
     render_metric_grid([
         {"label": "총 평가금액", "value": format_currency(summary.get("total_value_krw"))},
         {"label": "투자원금", "value": format_currency(summary.get("total_cost_krw"))},
         {"label": "평가손익", "value": format_currency(summary.get("profit_loss_krw"))},
-        {"label": "분석 자산", "value": f"{int(summary.get('asset_count') or 0):,}개"},
+        {"label": "분석 자산", "value": f"{formatted_asset_count:,}개"},
     ])
 
 

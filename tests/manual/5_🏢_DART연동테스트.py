@@ -11,7 +11,6 @@ from services.dart_service import (
     get_dart_company_data,
 )
 
-
 st.set_page_config(
     page_title="DART 연동 테스트",
     page_icon="🏢",

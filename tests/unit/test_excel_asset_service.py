@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+from typing import Any, cast
 
 import pandas as pd
 
@@ -18,7 +19,7 @@ from services.excel_asset_service import (
 
 def _excel_bytes(dataframe: pd.DataFrame) -> bytes:
     output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+    with pd.ExcelWriter(cast(Any, output), engine="openpyxl") as writer:
         dataframe.to_excel(writer, sheet_name="Assets", index=False)
     return output.getvalue()
 
@@ -75,7 +76,7 @@ def test_validate_generic_excel_with_automatic_mapping() -> None:
         "보유금액": 360,
         "통화코드": "USD",
     }])
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+    with pd.ExcelWriter(cast(Any, output), engine="openpyxl") as writer:
         dataframe.to_excel(writer, sheet_name="보유자산", index=False)
 
     result = validate_asset_excel(output.getvalue())
@@ -118,6 +119,7 @@ def test_template_workbook_ux() -> None:
     assert assets.freeze_panes == "A2"
     assert assets.auto_filter.ref == assets.dimensions
     assert assets["A2"].font.italic is True
+    assert assets["A2"].comment is not None
     assert assets["A2"].comment.text == "예시입니다. 삭제 후 사용하세요."
     assert len(assets.data_validations.dataValidation) >= 2
 
@@ -125,7 +127,9 @@ def test_template_workbook_ux() -> None:
     for required_column in REQUIRED_COLUMNS:
         assert headers[required_column].font.bold is True
         assert headers[required_column].fill.fgColor.rgb == "00D9EAF7"
-        assert headers[required_column].comment.text == "* 필수 입력 항목"
+        comment = headers[required_column].comment
+        assert comment is not None
+        assert comment.text == "* 필수 입력 항목"
 
 
 def test_export_can_be_imported_without_losing_asset_fields() -> None:

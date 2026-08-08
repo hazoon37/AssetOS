@@ -58,6 +58,7 @@ class SQLiteAssetRepositoryTests(unittest.TestCase):
 
             backup = repository.backup()
             self.assertIsNotNone(backup)
+            assert backup is not None
             self.assertTrue(backup.exists())
 
             repository.replace_all_assets([_row("NVIDIA", "NVDA")])
@@ -119,6 +120,7 @@ class SQLiteAssetRepositoryTests(unittest.TestCase):
 
             user = repository.get_user()
             self.assertIsNotNone(user)
+            assert user is not None
             self.assertEqual(user.id, DEFAULT_USER_ID)
             accounts = repository.get_accounts()
             self.assertEqual(accounts["account_name"].tolist(), ["My Portfolio"])
@@ -204,16 +206,19 @@ class SQLiteAssetRepositoryTests(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 repository.create_account("Invalid", "Unsupported")
-            with self.assertRaises(sqlite3.IntegrityError):
-                with closing(sqlite3.connect(database_path)) as connection, connection:
-                    connection.execute(
-                        """
-                        INSERT INTO assets (
-                            asset_type, asset_name, quantity, average_price,
-                            current_price, currency
-                        ) VALUES ('기타', 'Unowned', 1, 1, 1, 'KRW')
-                        """
-                    )
+            with (
+                self.assertRaises(sqlite3.IntegrityError),
+                closing(sqlite3.connect(database_path)) as connection,
+                connection,
+            ):
+                connection.execute(
+                    """
+                    INSERT INTO assets (
+                        asset_type, asset_name, quantity, average_price,
+                        current_price, currency
+                    ) VALUES ('기타', 'Unowned', 1, 1, 1, 'KRW')
+                    """
+                )
 
     def test_excel_import_can_target_one_account(self) -> None:
         repository = Mock(spec=AssetRepository)

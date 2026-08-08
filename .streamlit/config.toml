@@ -1,8 +1,6 @@
 [server]
-headless = false
-runOnSave = true
+headless = true
+runOnSave = false
 
 [browser]
 gatherUsageStats = false
-serverAddress = "localhost"
-serverPort = 8501

@@ -168,8 +168,10 @@ def render_krw_conversion(
     )
 
     caption_parts = [
-        "원화 환산값은 참고용이며 "
-        "실제 증권사·거래소 체결환율과 다를 수 있습니다."
+        (
+            "원화 환산값은 참고용이며 "
+            "실제 증권사·거래소 체결환율과 다를 수 있습니다."
+        )
     ]
 
     if exchange_date:

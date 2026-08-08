@@ -96,12 +96,10 @@ with holdings_tab:
     st.caption("자산을 등록하거나 목록에서 바로 수정·삭제할 수 있습니다.")
 
     action_col1, action_col2 = st.columns(2)
-    with action_col1:
-        with st.expander("➕ 새 자산 등록", expanded=assets_df.empty):
-            render_add_asset_tab(exchange_rates, account_id=selected_account_id)
-    with action_col2:
-        with st.expander("📥 Excel 자산 DB 업데이트", expanded=False):
-            render_excel_import_panel()
+    with action_col1, st.expander("➕ 새 자산 등록", expanded=assets_df.empty):
+        render_add_asset_tab(exchange_rates, account_id=selected_account_id)
+    with action_col2, st.expander("📥 Excel 자산 DB 업데이트", expanded=False):
+        render_excel_import_panel()
 
     st.divider()
     render_asset_management_view(

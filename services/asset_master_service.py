@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import csv
+import json
+import threading
+import unicodedata
 from dataclasses import asdict, dataclass
 from difflib import SequenceMatcher
 from functools import lru_cache
-import json
 from pathlib import Path
-import threading
-import unicodedata
 from typing import Any
-
 
 DEFAULT_ASSET_MASTER_PATH = Path(__file__).resolve().parent.parent / "data" / "asset_master.csv"
 ALIAS_DICTIONARY_PATH = Path(__file__).resolve().parent.parent / "resources" / "alias_dictionary.json"

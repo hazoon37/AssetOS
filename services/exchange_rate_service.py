@@ -6,7 +6,6 @@ from typing import Any
 import requests
 import streamlit as st
 
-
 API_URL = "https://api.frankfurter.dev/v2/rates"
 
 SUPPORTED_CURRENCIES = [
@@ -62,7 +61,7 @@ def get_exchange_rates_to_krw() -> dict[str, Any]:
         data = response.json()
 
         if not isinstance(data, list):
-            raise ValueError(
+            raise TypeError(
                 "환율 API 응답 형식이 예상과 다릅니다."
             )
 
@@ -115,7 +114,7 @@ def get_exchange_rates_to_krw() -> dict[str, Any]:
                 "rates": rates,
                 "date": (
                     rate_date
-                    or datetime.now().strftime("%Y-%m-%d")
+                    or datetime.now().astimezone().strftime("%Y-%m-%d")
                 ),
                 "success": False,
                 "message": (
@@ -128,7 +127,7 @@ def get_exchange_rates_to_krw() -> dict[str, Any]:
             "rates": rates,
             "date": (
                 rate_date
-                or datetime.now().strftime("%Y-%m-%d")
+                or datetime.now().astimezone().strftime("%Y-%m-%d")
             ),
             "success": True,
             "message": "",
@@ -143,7 +142,7 @@ def get_exchange_rates_to_krw() -> dict[str, Any]:
 
         return {
             "rates": rates,
-            "date": datetime.now().strftime("%Y-%m-%d"),
+            "date": datetime.now().astimezone().strftime("%Y-%m-%d"),
             "success": False,
             "message": (
                 "환율 정보를 불러오지 못했습니다. "

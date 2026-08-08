@@ -4,7 +4,6 @@ from services.ai_advisor import generate_portfolio_advice
 from services.portfolio_ai_service import (
     PortfolioAIProvider,
     RuleBasedPortfolioAIProvider,
-    diagnose_portfolio,
 )
 
 

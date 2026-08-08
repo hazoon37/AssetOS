@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 from dataclasses import asdict, dataclass
+from typing import cast
+from uuid import uuid4
 
 import streamlit as st
 
 AUTH_SESSION_KEY = "assetos_authenticated_user"
+GUEST_USER_ID_KEY = "assetos_guest_user_id"
 
 
 @dataclass(frozen=True)
@@ -17,12 +20,13 @@ class AuthenticatedUser:
     name: str
     avatar_url: str = ""
     provider: str = "google"
+    plan: str = "free"
 
 
 def _state(
     state: MutableMapping[str, object] | None = None,
 ) -> MutableMapping[str, object]:
-    return state if state is not None else st.session_state
+    return state if state is not None else cast(MutableMapping[str, object], st.session_state)
 
 
 def save_authenticated_user(
@@ -45,6 +49,7 @@ def get_authenticated_user(
             name=str(value["name"]),
             avatar_url=str(value.get("avatar_url") or ""),
             provider=str(value.get("provider") or "google"),
+            plan=str(value.get("plan") or "free"),
         )
     except KeyError:
         return None
@@ -54,3 +59,16 @@ def clear_authenticated_user(
     state: MutableMapping[str, object] | None = None,
 ) -> None:
     _state(state).pop(AUTH_SESSION_KEY, None)
+
+
+def get_or_create_guest_user_id(
+    state: MutableMapping[str, object] | None = None,
+) -> str:
+    """Return the stable guest ID retained for the current browser session."""
+    session = _state(state)
+    existing = str(session.get(GUEST_USER_ID_KEY) or "").strip()
+    if existing:
+        return existing
+    guest_user_id = str(uuid4())
+    session[GUEST_USER_ID_KEY] = guest_user_id
+    return guest_user_id

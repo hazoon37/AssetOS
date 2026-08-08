@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any
 
 import pandas as pd
@@ -14,7 +13,6 @@ from services.market_price_service import (
     get_market_price,
     normalize_stock_ticker,
 )
-
 
 COINGECKO_API_URL = "https://api.coingecko.com/api/v3"
 
@@ -94,7 +92,7 @@ def safe_int(
     if number is None:
         return None
 
-    return int(round(number))
+    return round(number)
 
 
 def first_available(
@@ -156,7 +154,7 @@ def dataframe_row_count(
         if value.empty:
             return None
 
-        return int(len(value))
+        return len(value)
 
     if isinstance(value, list):
 
@@ -222,8 +220,8 @@ def make_json_safe(
 
         try:
             return value.isoformat()
-        except Exception:
-            pass
+        except (AttributeError, TypeError, ValueError):
+            return str(value)
 
     return str(value)
 
@@ -349,7 +347,7 @@ def get_fund_details(
 
     try:
         funds_data = ticker_object.funds_data
-    except Exception:
+    except (AttributeError, KeyError, OSError, RuntimeError, TypeError, ValueError):
         return result
 
     try:
@@ -358,8 +356,8 @@ def get_fund_details(
         if isinstance(overview, dict):
             result["overview"] = overview
 
-    except Exception:
-        pass
+    except (AttributeError, KeyError, OSError, RuntimeError, TypeError, ValueError):
+        result["overview"] = {}
 
     try:
         operations = funds_data.fund_operations
@@ -371,8 +369,8 @@ def get_fund_details(
                 operations.to_dict()
             )
 
-    except Exception:
-        pass
+    except (AttributeError, KeyError, OSError, RuntimeError, TypeError, ValueError):
+        result["operations"] = {}
 
     try:
         top_holdings = funds_data.top_holdings
@@ -384,8 +382,8 @@ def get_fund_details(
             )
         )
 
-    except Exception:
-        pass
+    except (AttributeError, KeyError, OSError, RuntimeError, TypeError, ValueError):
+        result["top_holdings"] = None
 
     return result
 
@@ -879,7 +877,7 @@ def get_stock_or_etf_metadata(
                 ),
             }
 
-        except Exception as error:
+        except (requests.RequestException, KeyError, TypeError, ValueError) as error:
             last_error = str(error)
             continue
 
@@ -1180,9 +1178,9 @@ def get_crypto_metadata(
         if isinstance(categories, list):
 
             valid_categories = [
-                safe_text(item)
+                text
                 for item in categories
-                if safe_text(item)
+                if (text := safe_text(item)) is not None and text
             ]
 
             if valid_categories:

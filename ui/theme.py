@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import streamlit as st
 
-
 LIGHT_COLORS = {
     "background": "#F4F7FB",
     "surface": "#FFFFFF",

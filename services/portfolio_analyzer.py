@@ -5,8 +5,8 @@ from typing import Any
 
 from services.asset_classification import ASSET_CLASS_LABELS, COUNTRY_LABELS
 from services.portfolio_intelligence import (
-    build_investment_dna,
     build_insights,
+    build_investment_dna,
     build_portfolio_score,
     build_stress_tests,
 )

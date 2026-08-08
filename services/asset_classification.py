@@ -4,7 +4,6 @@ from typing import Any
 
 from services.asset_resolver import resolve_asset
 
-
 LEVERAGE_MAP: dict[str, float] = {
     "TQQQ": 3.0, "SQQQ": -3.0, "SOXL": 3.0, "SOXS": -3.0,
     "UPRO": 3.0, "SPXU": -3.0, "TECL": 3.0, "TECS": -3.0,

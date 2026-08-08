@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import math
+from collections.abc import Callable
 from dataclasses import dataclass
 from io import BytesIO
-import math
-from typing import Any, Callable
+from typing import Any, cast
 
-import streamlit as st
 import pandas as pd
+import streamlit as st
 
 from services.asset_resolver import (
     RESOLVABLE_ASSET_TYPES,
@@ -16,7 +17,6 @@ from services.asset_resolver import (
     resolve_asset,
 )
 from services.market_price_service import get_market_price
-
 
 SEARCHABLE_ASSET_TYPES = RESOLVABLE_ASSET_TYPES
 SKIPPED_ASSET_TYPES = {
@@ -64,7 +64,10 @@ def _market_price(asset_type: str, ticker: str, currency: str) -> float | None:
     if not result.get("success"):
         return None
     try:
-        price = float(result.get("price"))
+        raw_price = result.get("price")
+        if raw_price is None:
+            return None
+        price = float(raw_price)
         return price if math.isfinite(price) and price > 0 else None
     except (TypeError, ValueError):
         return None
@@ -430,7 +433,7 @@ def build_import_error_report(
             elif state == "skipped":
                 report.at[source_index, "Suggested Action"] = "Search not required"
     output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+    with pd.ExcelWriter(cast(Any, output), engine="openpyxl") as writer:
         report.to_excel(writer, sheet_name="Assets", index=False)
     return output.getvalue()
 
@@ -464,6 +467,8 @@ def apply_preview_edits(
             value = edited.get(preview_name)
             if preview_name in numeric_fields:
                 try:
+                    if value is None:
+                        raise ValueError
                     number = float(value)
                     if not math.isfinite(number) or number < 0:
                         raise ValueError

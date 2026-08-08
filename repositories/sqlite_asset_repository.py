@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-import sqlite3
 import json
 import shutil
+import sqlite3
 import tempfile
 import threading
+from collections.abc import Iterator, Sequence
 from contextlib import closing, contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterator, Sequence
+from typing import Any, cast
 
 import pandas as pd
 
@@ -22,8 +23,13 @@ from models.snapshot import PortfolioSnapshot
 from models.user import User
 from repositories.asset_repository import AssetRepository
 from services.asset_classification import classify_asset
-from services.user_context import get_current_user_id
 
+
+def _required_row_id(cursor: sqlite3.Cursor) -> int:
+    if cursor.lastrowid is None:
+        raise RuntimeError("SQLite가 생성된 행 ID를 반환하지 않았습니다.")
+    return int(cursor.lastrowid)
+from services.user_context import get_current_user_id
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_DB_PATH = BASE_DIR / "data" / "assets.db"
@@ -132,13 +138,14 @@ class SQLiteAssetRepository(AssetRepository):
     def _backfill_metadata(self, connection: sqlite3.Connection) -> None:
         rows = connection.execute("SELECT * FROM assets").fetchall()
         for row in rows:
+            columns = set(row.keys())
             classification = classify_asset(
                 asset_type=row["asset_type"],
                 symbol=row["symbol"],
                 currency=row["currency"],
-                exchange=row["exchange"] if "exchange" in row.keys() else "",
-                sector=row["sector"] if "sector" in row.keys() else "",
-                industry=row["industry"] if "industry" in row.keys() else "",
+                exchange=row["exchange"] if "exchange" in columns else "",
+                sector=row["sector"] if "sector" in columns else "",
+                industry=row["industry"] if "industry" in columns else "",
             )
             connection.execute(
                 """
@@ -405,7 +412,7 @@ class SQLiteAssetRepository(AssetRepository):
                             "INSERT INTO accounts (user_id, account_name, account_type) VALUES (?, ?, ?)",
                             (target, name, str(account["account_type"])),
                         )
-                        target_accounts[name] = int(cursor.lastrowid)
+                        target_accounts[name] = _required_row_id(cursor)
                     account_map[int(account["id"])] = target_accounts[name]
 
                 for source_account, target_account in account_map.items():
@@ -452,8 +459,8 @@ class SQLiteAssetRepository(AssetRepository):
                 SELECT id, user_id, account_name, account_type
                 FROM accounts WHERE user_id=? ORDER BY id ASC
                 """,
-                connection,
-                params=(self._user_id(user_id),),
+                cast(Any, connection),
+                params=[self._user_id(user_id)],
             )
 
     def create_account(
@@ -484,7 +491,7 @@ class SQLiteAssetRepository(AssetRepository):
                 )
             except sqlite3.IntegrityError as exc:
                 raise ValueError(f"이미 존재하는 계정 이름입니다: {name}") from exc
-            return Account(int(cursor.lastrowid), owner, name, kind)
+            return Account(_required_row_id(cursor), owner, name, kind)
 
     def get_preferences(self, user_id: str | None = None) -> UserPreferences:
         self.initialize()
@@ -555,8 +562,8 @@ class SQLiteAssetRepository(AssetRepository):
                 WHERE assets.user_id=? AND accounts.user_id=assets.user_id{account_filter}
                 ORDER BY assets.id ASC
                 """,
-                connection,
-                params=params,
+                cast(Any, connection),
+                params=list(params),
             )
 
     @staticmethod
@@ -664,7 +671,7 @@ class SQLiteAssetRepository(AssetRepository):
             return None
         backup_dir = self.db_path.parent / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        timestamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S_%f")
         backup_path = backup_dir / f"assetos_backup_{timestamp}.db"
         with self._connect() as source, closing(sqlite3.connect(backup_path)) as destination:
             source.backup(destination)
@@ -672,9 +679,8 @@ class SQLiteAssetRepository(AssetRepository):
 
     def export_backup(self) -> bytes:
         self.initialize()
-        temporary = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        temporary_path = Path(temporary.name)
-        temporary.close()
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as temporary:
+            temporary_path = Path(temporary.name)
         try:
             with self._connect() as source, closing(sqlite3.connect(temporary_path)) as destination:
                 source.backup(destination)
@@ -705,16 +711,13 @@ class SQLiteAssetRepository(AssetRepository):
             raise ValueError("백업 파일은 50MB 이하여야 합니다.")
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._initialization_lock:
-            temporary = tempfile.NamedTemporaryFile(
-                suffix=".db",
-                dir=self.db_path.parent,
-                delete=False,
-            )
-            temporary_path = Path(temporary.name)
-            try:
+            with tempfile.NamedTemporaryFile(
+                suffix=".db", dir=self.db_path.parent, delete=False,
+            ) as temporary:
                 temporary.write(backup)
                 temporary.flush()
-                temporary.close()
+                temporary_path = Path(temporary.name)
+            try:
                 self._validate_backup(temporary_path)
                 safety_backup = self.backup()
                 temporary_path.replace(self.db_path)
@@ -857,7 +860,7 @@ class SQLiteAssetRepository(AssetRepository):
                 SELECT id, user_id, account_id, snapshot_data, created_at
                 FROM snapshots WHERE id=? AND user_id=?
                 """,
-                (int(cursor.lastrowid), owner),
+                (_required_row_id(cursor), owner),
             ).fetchone()
         if row is None:
             raise RuntimeError("포트폴리오 스냅샷을 저장하지 못했습니다.")

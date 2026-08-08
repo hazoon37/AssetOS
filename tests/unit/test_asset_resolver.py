@@ -4,9 +4,9 @@ from unittest.mock import patch
 
 from services.asset_resolver import (
     RESOLVABLE_ASSET_TYPES,
-    enrich_asset_with_resolver,
     AssetResolution,
     ResolvedAsset,
+    enrich_asset_with_resolver,
     load_alias_dictionary,
     resolve_asset,
 )

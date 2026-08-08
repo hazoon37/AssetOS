@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -42,7 +43,7 @@ def _filter_assets(df: pd.DataFrame) -> pd.DataFrame:
         ]
     if selected_type != "전체":
         filtered = filtered[filtered["asset_type"] == selected_type]
-    return filtered
+    return pd.DataFrame(filtered)
 
 
 def _render_action_rows(df: pd.DataFrame) -> None:
@@ -72,8 +73,18 @@ def _render_action_rows(df: pd.DataFrame) -> None:
         columns[3].write(format_quantity_value(float(row["quantity"]), str(row["asset_type"])))
         krw_value = row["원화 평가금액"]
         krw_profit = row["원화 평가손익"]
-        columns[4].write(format_currency(krw_value) if pd.notna(krw_value) else "환율 오류")
-        columns[5].write(format_currency(krw_profit) if pd.notna(krw_profit) else "-")
+        value_available = pd.notna(krw_value)
+        profit_available = pd.notna(krw_profit)
+        columns[4].write(
+            format_currency(krw_value)
+            if isinstance(value_available, (bool, np.bool_)) and bool(value_available)
+            else "환율 오류"
+        )
+        columns[5].write(
+            format_currency(krw_profit)
+            if isinstance(profit_available, (bool, np.bool_)) and bool(profit_available)
+            else "-"
+        )
 
         if columns[6].button("수정", key=f"asset_row_edit_{asset_id}", width="stretch"):
             open_edit(asset_id)
@@ -98,7 +109,9 @@ def _render_detail_table(df: pd.DataFrame) -> None:
             "번호", "자산 종류", "자산명", "티커·구분", "수량", "평균단가",
             "현재가", "평가금액", "평가손익", "수익률", "통화", "원화 환산금액",
         ]
-        display["자산 종류"] = display["자산 종류"].map(format_asset_type)
+        display["자산 종류"] = pd.Series(
+            display["자산 종류"], index=display.index
+        ).map(format_asset_type)
         display["번호"] = display["번호"].astype(int)
         display["수량"] = display.apply(
             lambda row: format_quantity_value(float(row["수량"]), str(row["자산 종류"])), axis=1
@@ -110,10 +123,14 @@ def _render_detail_table(df: pd.DataFrame) -> None:
                 ),
                 axis=1,
             )
-        display["원화 환산금액"] = display["원화 환산금액"].map(
+        display["원화 환산금액"] = pd.Series(
+            display["원화 환산금액"], index=display.index
+        ).map(
             lambda value: format_currency(value) if pd.notna(value) else "환율 조회 실패"
         )
-        display["수익률"] = display["수익률"].map(
+        display["수익률"] = pd.Series(
+            display["수익률"], index=display.index
+        ).map(
             lambda value: format_percent(value, signed=True)
         )
         st.dataframe(display, width="stretch", hide_index=True)

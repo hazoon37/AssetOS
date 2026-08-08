@@ -402,13 +402,6 @@ def _render_autofill_result(
 
     warnings = st.session_state.get(
         "add_lookup_warnings",
-    "add_lookup_country",
-    "add_lookup_asset_class",
-    "add_lookup_is_cash",
-    "add_lookup_is_leverage",
-    "add_lookup_is_inverse",
-    "add_lookup_leverage_multiple",
-    "add_lookup_tags",
         [],
     )
 

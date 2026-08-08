@@ -4,12 +4,12 @@ import re
 from uuid import UUID, uuid4
 
 import streamlit as st
+import streamlit.components.v2 as components_v2
 
 from repositories import get_asset_repository
 from repositories.asset_repository import AssetRepository
 from repositories.sqlite_asset_repository import DEFAULT_USER_ID
-from services.user_context import set_current_user_id
-
+from services.user_context import CurrentUser, set_current_user
 
 LOCAL_USER_PREFIX = "local:"
 LOCAL_STORAGE_KEY = "assetos.local_user_id"
@@ -33,7 +33,7 @@ def is_valid_local_user_id(user_id: object) -> bool:
         return False
 
 
-_LOCAL_USER_COMPONENT = st.components.v2.component(
+_LOCAL_USER_COMPONENT = components_v2.component(
     "assetos_local_user",
     js="""
     export default function(component) {
@@ -77,7 +77,7 @@ def initialize_local_user(
         raise ValueError("올바르지 않은 로컬 사용자 ID입니다.")
     target = repository or get_asset_repository()
     suffix = user_id.removeprefix(LOCAL_USER_PREFIX)
-    target.ensure_user(user_id, f"{suffix}@local.assetos", "Local User")
+    user = target.ensure_user(user_id, f"{suffix}@local.assetos", "Local User")
     target.migrate_user_scope(DEFAULT_USER_ID, user_id)
-    set_current_user_id(user_id)
+    set_current_user(CurrentUser(user.id, user.name, user.email))
     return user_id

@@ -9,7 +9,6 @@ from ui.common.formatters import (
     format_multiple,
 )
 
-
 STATUS_LABELS = {
     "valid": "정상",
     "missing": "자료 없음",

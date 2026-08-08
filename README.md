@@ -61,6 +61,9 @@ Streamlit Community Cloud에서는 앱 설정의 Secrets에 같은 키를 등록
 2. `requirements.txt`와 `runtime.txt`가 자동 적용됩니다.
 3. Secrets를 Cloud 설정에 등록합니다.
 
+Google OAuth redirect, production secrets, environment variables, and post-deployment
+checks are documented in [Deployment Guide](docs/DEPLOYMENT.md).
+
 SQLite와 `data/backups`는 Community Cloud 재시작 시 영구 보존을 보장하지
 않습니다. v1.0 로컬/단일 인스턴스에서는 설정의 백업 다운로드를 사용하고,
 지속형 다중 인스턴스 배포는 향후 원격 Repository 구현을 사용해야 합니다.

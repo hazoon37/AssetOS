@@ -6,7 +6,7 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
-from services.asset_resolver import learn_asset_alias
+from services.asset_resolver import ResolvedAsset, learn_asset_alias
 from services.smart_import_service import (
     SmartImportResolution,
     apply_manual_ticker,
@@ -168,7 +168,7 @@ def render_candidate_pickers(
                     manual_tickers[row_number] = manual
                     changed = True
 
-            if chosen_candidate is not None:
+            if isinstance(chosen_candidate, ResolvedAsset):
                 value = {
                     "ticker": chosen_candidate.ticker,
                     "exchange": chosen_candidate.exchange,

@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from services.asset_classification import classify_asset
 from services.company_service import (
     analyze_company,
 )
-from services.asset_classification import classify_asset
-
 
 SUPPORTED_ASSET_TYPES = {
     "국내주식",

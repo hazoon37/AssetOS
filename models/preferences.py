@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 SUPPORTED_BASE_CURRENCIES = ("KRW", "USD", "JPY", "EUR", "GBP", "HKD")
 SUPPORTED_THEMES = ("System", "Light", "Dark")
 

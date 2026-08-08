@@ -3,7 +3,6 @@ from __future__ import annotations
 from repositories.asset_repository import AssetRepository
 from repositories.sqlite_asset_repository import SQLiteAssetRepository
 
-
 _default_repository: AssetRepository = SQLiteAssetRepository()
 
 

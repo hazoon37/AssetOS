@@ -3,9 +3,17 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from components.asset_management.constants import ASSET_TYPES, CURRENCY_NAMES, SUPPORTED_CURRENCIES
+from components.asset_management.constants import (
+    ASSET_TYPES,
+    CURRENCY_NAMES,
+    SUPPORTED_CURRENCIES,
+)
 from components.asset_management.controller import save_asset_changes
-from components.asset_management.helpers import get_quantity_format, get_quantity_step, safe_text
+from components.asset_management.helpers import (
+    get_quantity_format,
+    get_quantity_step,
+    safe_text,
+)
 from components.asset_management.state import clear_action_state, is_editing
 
 

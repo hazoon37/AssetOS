@@ -70,7 +70,7 @@ def _render_pdf_preview(result: dict[str, Any]) -> None:
             fig = px.pie(chart_df, names="자산군", values="비중", hole=0.58)
             fig.update_layout(
                 height=300,
-                margin=dict(l=10, r=10, t=35, b=10),
+                margin={"l": 10, "r": 10, "t": 35, "b": 10},
                 title="자산군 구성",
                 legend_title_text="",
             )
@@ -158,7 +158,7 @@ def render_portfolio_report(result: dict[str, Any]) -> None:
             type="primary",
             width="content",
         )
-    except Exception as error:
+    except (OSError, RuntimeError, TypeError, ValueError) as error:
         st.error(f"PDF 생성 중 오류가 발생했습니다: {error}")
 
     st.divider()

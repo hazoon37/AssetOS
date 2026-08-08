@@ -6,7 +6,11 @@ import streamlit as st
 
 from database.db import get_accounts
 from models.account import ACCOUNT_TYPES
-from models.preferences import SUPPORTED_BASE_CURRENCIES, SUPPORTED_THEMES, UserPreferences
+from models.preferences import (
+    SUPPORTED_BASE_CURRENCIES,
+    SUPPORTED_THEMES,
+    UserPreferences,
+)
 from services.portfolio_service import clear_portfolio_analysis_cache
 from services.settings_service import (
     create_investment_account,
@@ -66,7 +70,7 @@ def render_settings_panel(preferences: UserPreferences) -> None:
         if st.button("백업 파일 생성", width="stretch"):
             st.session_state["assetos_backup_bytes"] = export_database_backup()
             st.session_state["assetos_backup_name"] = (
-                f"AssetOS_Backup_{datetime.now():%Y%m%d_%H%M%S}.db"
+                f"AssetOS_Backup_{datetime.now().astimezone():%Y%m%d_%H%M%S}.db"
             )
         backup_bytes = st.session_state.get("assetos_backup_bytes")
         if backup_bytes:
@@ -93,6 +97,9 @@ def render_settings_panel(preferences: UserPreferences) -> None:
             disabled=restore_file is None or not restore_confirmed,
             width="stretch",
         ):
+            if restore_file is None:
+                st.error("복원할 백업 파일을 선택해 주세요.")
+                return
             try:
                 restore_database_backup(restore_file.getvalue())
             except ValueError as error:

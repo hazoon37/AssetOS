@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
-import streamlit as st
 
 from repositories import get_asset_repository
 from repositories.asset_repository import AssetRepository
@@ -12,8 +11,8 @@ from services.asset_resolver import (
     is_resolvable_asset_type,
     resolve_asset,
 )
-from services.market_price_service import get_market_price
 from services.exchange_rate_service import get_exchange_rates_to_krw
+from services.market_price_service import get_market_price
 from services.portfolio_analyzer import analyze_portfolio
 from services.user_context import get_current_user_id
 
@@ -237,7 +236,7 @@ def _build_portfolio_analysis(
     result.update({
         "exchange_rate_date": exchange.get("date"),
         "exchange_rate_success": bool(exchange.get("success")),
-        "source_asset_count": int(len(assets_df)),
+        "source_asset_count": len(assets_df),
         "exclude_real_estate": bool(exclude_real_estate),
         "user_id": user_id,
         "account_id": account_id,

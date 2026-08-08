@@ -7,11 +7,10 @@ import streamlit as st
 from services.asset_metadata_service import (
     get_asset_metadata,
 )
+from services.asset_resolver import resolve_asset
 from services.dart_service import (
     get_dart_company_data,
 )
-from services.asset_resolver import resolve_asset
-
 from services.financial_metrics import (
     calculate_debt_ratio,
     calculate_growth,
@@ -22,6 +21,7 @@ from services.financial_metrics import (
     calculate_roa,
     calculate_roe,
 )
+
 
 def safe_float(
     value: Any,

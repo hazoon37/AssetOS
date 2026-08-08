@@ -9,7 +9,7 @@ from repositories.sqlite_asset_repository import (
     DEFAULT_USER_EMAIL,
     DEFAULT_USER_ID,
 )
-from services.user_context import set_current_user_id
+from services.user_context import CurrentUser, set_current_user
 
 SUPPORTED_AUTH_PROVIDERS = ("local", "google", "apple", "github")
 
@@ -60,7 +60,12 @@ class AuthenticationService:
             identity.email,
             identity.name,
         )
-        set_current_user_id(user.id)
+        set_current_user(CurrentUser(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            is_authenticated=True,
+        ))
         return AuthContext(
             user_id=user.id,
             email=user.email,

@@ -113,16 +113,19 @@ def render_allocation_chart(
     if dimension not in assets.columns:
         st.info(f"{label} 메타데이터가 없습니다.")
         return
-    summary = assets.assign(
+    summary = pd.DataFrame(assets.assign(
         _allocation_label=(
             assets[dimension].fillna("").astype(str).replace("", "Unclassified")
         )
-    ).groupby("_allocation_label", as_index=False)["원화 평가금액"].sum()
+    ).groupby("_allocation_label", as_index=False)[["원화 평가금액"]].sum())
     if dimension == "asset_type":
-        summary["_allocation_label"] = summary["_allocation_label"].map(
+        summary["_allocation_label"] = pd.Series(
+            summary["_allocation_label"], index=summary.index
+        ).map(
             format_asset_type
         )
-    summary = summary[summary["원화 평가금액"] > 0].sort_values(
+    positive = pd.Series(summary["원화 평가금액"], index=summary.index) > 0
+    summary = pd.DataFrame(summary.loc[positive]).sort_values(
         "원화 평가금액", ascending=False
     )
     if summary.empty:
@@ -154,10 +157,10 @@ def render_allocation_chart(
         font={"color": theme_text_color(), "size": 12},
     )
     st.plotly_chart(chart, width="stretch")
-    table = summary[["_allocation_label", "원화 평가금액"]].rename(
+    table = pd.DataFrame(summary.loc[:, ["_allocation_label", "원화 평가금액"]]).rename(
         columns={"_allocation_label": label, "원화 평가금액": "평가금액"}
     )
-    table["평가금액"] = table["평가금액"].map(
+    table["평가금액"] = pd.Series(table["평가금액"], index=table.index).map(
         lambda value: format_currency(value, base_currency)
     )
     st.dataframe(table, width="stretch", hide_index=True)
@@ -564,12 +567,12 @@ if not valid_assets_df.empty:
         for monetary_column in ("원화 매입금액", "원화 평가금액", "원화 평가손익"):
             valid_assets_df[monetary_column] /= float(base_rate)
 else:
-    valid_assets_df = pd.DataFrame(columns=[
+    valid_assets_df = pd.DataFrame(columns=pd.Index([
         "asset_name", "symbol", "asset_type", "asset_class", "country",
         "currency", "sector", "account_name", "quantity", "average_price",
         "current_price", "원화 매입금액", "원화 평가금액",
         "원화 평가손익", "수익률",
-    ])
+    ]))
 dashboard_diagnosis = None
 if dashboard_analysis.get("success"):
     dashboard_diagnosis = diagnose_portfolio(dashboard_analysis)
@@ -722,7 +725,7 @@ profit_assets_df = valid_assets_df[
     ]
 ].copy()
 
-profit_assets_df = profit_assets_df.sort_values(
+profit_assets_df = pd.DataFrame(profit_assets_df).sort_values(
     "원화 평가손익",
     ascending=False,
 )
@@ -754,14 +757,14 @@ def make_profit_loss_display(
 ) -> pd.DataFrame:
     """대시보드용 손익 표를 간결하게 가공합니다."""
 
-    display = dataframe[
+    display = pd.DataFrame(dataframe.loc[:,
         [
             "asset_name",
             "symbol",
             "원화 평가손익",
             "수익률",
         ]
-    ].copy()
+    ]).copy()
 
     display.columns = [
         "자산명",
@@ -770,7 +773,7 @@ def make_profit_loss_display(
         "수익률",
     ]
 
-    display["자산명"] = display["자산명"].map(
+    display["자산명"] = pd.Series(display["자산명"], index=display.index).map(
         lambda value: (
             str(value)
             if len(str(value)) <= 15
@@ -778,15 +781,15 @@ def make_profit_loss_display(
         )
     )
 
-    display["손익"] = display["손익"].map(
+    display["손익"] = pd.Series(display["손익"], index=display.index).map(
         lambda value: format_currency(value, base_currency)
     )
 
-    display["수익률"] = display["수익률"].map(
+    display["수익률"] = pd.Series(display["수익률"], index=display.index).map(
         lambda value: format_percent(value, signed=True)
     )
 
-    return display.reset_index(drop=True)
+    return pd.DataFrame(display.reset_index(drop=True))
 
 
 profit_table = make_profit_loss_display(
@@ -918,7 +921,9 @@ holdings_display_df.columns = [
     f"{base_currency} 평가손익",
     "수익률",
 ]
-holdings_display_df["자산 종류"] = holdings_display_df["자산 종류"].map(
+holdings_display_df["자산 종류"] = pd.Series(
+    holdings_display_df["자산 종류"], index=holdings_display_df.index
+).map(
     format_asset_type
 )
 
@@ -961,19 +966,23 @@ for price_column in [
 value_column_label = f"{base_currency} 평가금액"
 profit_column_label = f"{base_currency} 평가손익"
 
-holdings_display_df[value_column_label] = holdings_display_df[value_column_label].map(
+holdings_display_df[value_column_label] = pd.Series(
+    holdings_display_df[value_column_label], index=holdings_display_df.index
+).map(
     lambda value: format_currency(value, base_currency)
 )
-holdings_display_df[profit_column_label] = holdings_display_df[profit_column_label].map(
+holdings_display_df[profit_column_label] = pd.Series(
+    holdings_display_df[profit_column_label], index=holdings_display_df.index
+).map(
     lambda value: format_currency(value, base_currency)
 )
 
 
 holdings_display_df[
     "수익률"
-] = holdings_display_df[
-    "수익률"
-].map(
+] = pd.Series(
+    holdings_display_df["수익률"], index=holdings_display_df.index
+).map(
     lambda value: (
         format_percent(value, signed=True)
     )

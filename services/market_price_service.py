@@ -8,7 +8,6 @@ import yfinance as yf
 
 from services.asset_resolver import is_resolvable_asset_type, resolve_asset
 
-
 COINGECKO_API_URL = "https://api.coingecko.com/api/v3"
 
 
@@ -81,8 +80,8 @@ def extract_latest_price(
             if price > 0:
                 return price
 
-    except Exception:
-        pass
+    except (AttributeError, KeyError, OSError, RuntimeError, TypeError, ValueError):
+        fast_info = None
 
     try:
         history = ticker_object.history(
@@ -108,8 +107,8 @@ def extract_latest_price(
                 if price > 0:
                     return price
 
-    except Exception:
-        pass
+    except (AttributeError, KeyError, OSError, RuntimeError, TypeError, ValueError):
+        return None
 
     return None
 
@@ -179,7 +178,7 @@ def get_stock_price(
                 "message": "",
             }
 
-        except Exception:
+        except (AttributeError, KeyError, OSError, RuntimeError, TypeError, ValueError):
             continue
 
     return {

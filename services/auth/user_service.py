@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Protocol
-from uuid import uuid4
 
 from repositories import get_asset_repository
 from repositories.asset_repository import AssetRepository
@@ -9,9 +8,10 @@ from services.auth.session import (
     AuthenticatedUser,
     clear_authenticated_user,
     get_authenticated_user,
+    get_or_create_guest_user_id,
     save_authenticated_user,
 )
-from services.user_context import set_current_user_id
+from services.user_context import CurrentUser, set_current_user
 
 GUEST_SAMPLE_ASSETS: tuple[dict[str, object], ...] = (
     {
@@ -84,7 +84,15 @@ class UserService:
             user.email,
             user.name,
         )
-        set_current_user_id(persisted.id)
+        set_current_user(CurrentUser(
+            id=persisted.id,
+            name=persisted.name,
+            email=persisted.email,
+            photo=user.avatar_url,
+            plan=user.plan,
+            is_guest=user.provider.lower() == "guest",
+            is_authenticated=user.provider.lower() != "guest",
+        ))
 
     def current(self) -> AuthenticatedUser | None:
         user = self.store.get()
@@ -97,10 +105,10 @@ class UserService:
         self.store.save(user)
         return user
 
-    def start_guest(self) -> AuthenticatedUser:
+    def start_guest(self, guest_user_id: str | None = None) -> AuthenticatedUser:
         """Create an isolated demo scope and seed it once with sample assets."""
         user = self.remember(AuthenticatedUser(
-            subject=str(uuid4()),
+            subject=guest_user_id or get_or_create_guest_user_id(),
             email="guest@assetos.local",
             name="Guest",
             provider="guest",

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
-from typing import BinaryIO, Protocol, Sequence
+from typing import BinaryIO, Protocol
 
 import pandas as pd
 

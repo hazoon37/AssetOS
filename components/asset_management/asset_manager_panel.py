@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import datetime
 
 import streamlit as st
 
-from components.asset_management.excel_import_panel import render_excel_import_panel
 from components.asset_management.add_asset_tab import render_add_asset_tab
+from components.asset_management.excel_import_panel import render_excel_import_panel
 from components.asset_management.helpers import prepare_assets_dataframe
 from database.db import get_accounts, get_assets
 from services.asset_export_service import export_assets_json
-from services.exchange_rate_service import get_exchange_rates_to_krw
 from services.excel_asset_service import build_asset_template_excel, export_assets_excel
+from services.exchange_rate_service import get_exchange_rates_to_krw
 from ui.asset_table import render_asset_management_view
 
 
@@ -59,14 +59,14 @@ def render_asset_manager_panel() -> None:
         st.download_button(
             "현재 Asset DB 다운로드",
             data=export_assets_excel(assets),
-            file_name=f"AssetOS_Assets_{date.today():%Y%m%d}.xlsx",
+            file_name=f"AssetOS_Assets_{datetime.now().astimezone():%Y%m%d}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             width="stretch",
         )
         st.download_button(
             "현재 Asset DB JSON 다운로드",
             data=export_assets_json(assets),
-            file_name=f"AssetOS_Assets_{date.today():%Y%m%d}.json",
+            file_name=f"AssetOS_Assets_{datetime.now().astimezone():%Y%m%d}.json",
             mime="application/json",
             width="stretch",
         )

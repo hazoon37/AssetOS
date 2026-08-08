@@ -10,7 +10,6 @@ import pandas as pd
 import requests
 import streamlit as st
 
-
 DART_API_BASE_URL = "https://opendart.fss.or.kr/api"
 
 REPORT_CODES = {
@@ -526,7 +525,7 @@ def get_latest_annual_financials(
 
     if start_year is None:
         start_year = (
-            datetime.now().year - 1
+            datetime.now().astimezone().year - 1
         )
 
     attempted_years: list[int] = []

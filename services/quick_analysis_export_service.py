@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import json
 from dataclasses import asdict
 from datetime import datetime
 from io import BytesIO
-import json
 from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
@@ -65,7 +65,7 @@ def export_quick_analysis_png(
     value_font = ImageFont.load_default(size=32)
     draw.text((70, 55), "AssetOS Quick Portfolio Analysis", fill="#0F172A", font=title_font)
     draw.text(
-        (70, 110), datetime.now().strftime("Generated %Y-%m-%d %H:%M"),
+        (70, 110), datetime.now().astimezone().strftime("Generated %Y-%m-%d %H:%M"),
         fill="#64748B", font=font,
     )
     metrics = diagnosis.metrics

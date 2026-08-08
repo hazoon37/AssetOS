@@ -8,7 +8,6 @@ from models.account import Account
 from repositories import get_asset_repository
 from repositories.sqlite_asset_repository import DEFAULT_DB_PATH
 
-
 # Backward-compatible path constant for callers outside the repository layer.
 DB_PATH = DEFAULT_DB_PATH
 

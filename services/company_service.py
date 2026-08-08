@@ -8,11 +8,10 @@ from services.analysis_engine import (
 from services.asset_metadata_service import (
     get_asset_metadata,
 )
+from services.asset_resolver import AssetResolution, resolve_asset
 from services.exchange_rate_service import (
     get_exchange_rates_to_krw,
 )
-from services.asset_resolver import AssetResolution, resolve_asset
-
 
 SUPPORTED_ASSET_TYPES = {
     "국내주식",
@@ -57,20 +56,15 @@ def validate_request(
     if not symbol:
         return "종목코드 또는 티커를 입력해 주세요."
 
-    if asset_type in {
-        "국내주식",
-        "국내ETF",
-    }:
-
-        if not (
-            symbol.isdigit()
-            and len(symbol) == 6
-        ):
-            return (
-                "해당 키워드로는 검색이 불가합니다. "
-                "국내주식과 국내ETF는 "
-                "6자리 종목코드로 입력해 주세요."
-            )
+    if asset_type in {"국내주식", "국내ETF"} and not (
+        symbol.isdigit()
+        and len(symbol) == 6
+    ):
+        return (
+            "해당 키워드로는 검색이 불가합니다. "
+            "국내주식과 국내ETF는 "
+            "6자리 종목코드로 입력해 주세요."
+        )
 
     return None
 

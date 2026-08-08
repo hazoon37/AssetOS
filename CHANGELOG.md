@@ -109,6 +109,76 @@
 
 --------------------------------
 
+## v0.2.9
+
+### Added
+
+- Streamlit Community Cloud deployment guide
+- Production Google OAuth redirect and secrets checklist
+- Documented non-secret build environment variables
+
+### Changed
+
+- Added the Authlib runtime dependency required by Streamlit Google login
+- Removed fixed localhost server address and port from production configuration
+- Enabled headless deployment defaults
+
+### Fixed
+
+- Google login can now load its required OAuth runtime on a clean cloud deployment
+
+### Known Issues
+
+- SQLite, feedback, and error logs remain instance-local on Streamlit Community Cloud
+
+--------------------------------
+
+## v0.2.8
+
+### Added
+
+- About dialog with Version, Build, and Git Tag
+- User-scoped Bug, Suggestion, and Comment feedback capture
+- Size-bounded local logging for unexpected page exceptions
+
+### Changed
+
+- Pilot sidebar now provides compact About and Feedback actions
+
+### Fixed
+
+- Uncaught application failures now retain diagnostic details locally
+
+### Known Issues
+
+- Feedback and error logs remain instance-local on Streamlit Community Cloud
+
+--------------------------------
+
+## v0.2.7
+
+### Added
+
+- Pilot-ready Google OIDC login through Streamlit authentication
+- Persistent Google identity mapping using the provider subject ID
+- Automatic empty portfolio and default account creation on first login
+
+### Changed
+
+- Returning users automatically restore their existing SQLite portfolio scope
+- Google, Guest, and Developer modes share the same repository isolation boundary
+
+### Fixed
+
+- Added regression coverage preventing portfolio visibility across Google users
+
+### Known Issues
+
+- Streamlit Community Cloud SQLite files are not durable across instance replacement
+- Production deployment still requires Google OAuth secrets and redirect registration
+
+--------------------------------
+
 ## v0.2.6
 
 ### Added
@@ -116,14 +186,25 @@
 - Google Login
 - Guest Mode
 - User Session
+- Developer Login
+- Complete User Context profile (`id`, `name`, `email`, `photo`, `plan`, guest and authentication state)
+- Stable per-session Guest User ID
+- Automatic SQLite ownership migration for legacy assets
+- Google, Guest, and Developer login entry points
 
 ### Changed
 
 - Repository supports user_id
+- Authentication uses a single User Context
+- Repository default scopes are obtained from the shared User Context
+- Asset and account operations are isolated by `user_id`
 
 ### Fixed
 
 - No breaking changes
+- Restored original Excel row numbers after empty-row filtering
+- Cleared all Ruff and Pylance/Pyright diagnostics without changing calculations
+- Corrected malformed add-asset session warning lookup
 
 ### Known Issues
 

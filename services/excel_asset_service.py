@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import re
+import zipfile
 from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
-import re
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, cast
 
 import pandas as pd
 from openpyxl.comments import Comment
@@ -79,6 +80,11 @@ def _clean_text(value: Any) -> str:
     return str(value).strip()
 
 
+def _excel_row_number(index: object, fallback: int) -> int:
+    """Translate an original zero-based dataframe index to its Excel row."""
+    return int(index) + 2 if isinstance(index, int) else fallback
+
+
 def _to_float(value: Any, *, field: str, row_number: int) -> float:
     if value is None or pd.isna(value) or str(value).strip() == "":
         return 0.0
@@ -109,7 +115,7 @@ def read_asset_excel(file: BinaryIO | bytes, sheet_name: str = SHEET_NAME) -> pd
 def _dataframe_to_excel(dataframe: pd.DataFrame) -> bytes:
     """Serialize one Assets sheet without touching the filesystem."""
     output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+    with pd.ExcelWriter(cast(Any, output), engine="openpyxl") as writer:
         dataframe.to_excel(writer, sheet_name=SHEET_NAME, index=False)
     return output.getvalue()
 
@@ -125,10 +131,10 @@ def build_asset_template_excel() -> bytes:
         "현재가": 210,
         "통화": "USD",
     }
-    template = pd.DataFrame([example], columns=TEMPLATE_COLUMNS)
+    template = pd.DataFrame([example], columns=pd.Index(TEMPLATE_COLUMNS))
     output = BytesIO()
 
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+    with pd.ExcelWriter(cast(Any, output), engine="openpyxl") as writer:
         template.to_excel(writer, sheet_name=SHEET_NAME, index=False)
         workbook = writer.book
         assets_sheet = writer.sheets[SHEET_NAME]
@@ -249,7 +255,13 @@ def validate_asset_excel(file: BinaryIO | bytes) -> ExcelValidationResult:
         mapping = map_import_columns(dataframe)
         dataframe = mapping.dataframe
         warnings.extend(mapping.warnings)
-    except Exception as exc:
+    except (
+        KeyError,
+        OSError,
+        TypeError,
+        ValueError,
+        zipfile.BadZipFile,
+    ) as exc:
         return ExcelValidationResult(
             success=False,
             rows=[],
@@ -263,7 +275,15 @@ def validate_asset_excel(file: BinaryIO | bytes) -> ExcelValidationResult:
     if missing:
         missing_preview = dataframe.head(20).copy()
         missing_preview.insert(
-            0, "Row Number", [int(index) + 2 for index in missing_preview.index]
+            0,
+            "Row Number",
+            pd.Series(
+                [
+                    _excel_row_number(index, fallback)
+                    for fallback, index in enumerate(missing_preview.index, start=2)
+                ],
+                index=missing_preview.index,
+            ),
         )
         return ExcelValidationResult(
             success=False,
@@ -280,8 +300,8 @@ def validate_asset_excel(file: BinaryIO | bytes) -> ExcelValidationResult:
     dataframe = dataframe.dropna(how="all").copy()
     rows: list[dict[str, Any]] = []
 
-    for index, excel_row in dataframe.iterrows():
-        row_number = int(index) + 2
+    for fallback, (index, excel_row) in enumerate(dataframe.iterrows(), start=2):
+        row_number = _excel_row_number(index, fallback)
         asset_name = _clean_text(excel_row.get("자산명"))
         asset_type = _clean_text(excel_row.get("자산종류"))
 
@@ -367,8 +387,18 @@ def validate_asset_excel(file: BinaryIO | bytes) -> ExcelValidationResult:
         for column in ["자산종류", "자산명", "티커", "수량", "평균단가", "현재가", "통화"]
         if column in dataframe.columns
     ]
-    preview = dataframe[preview_columns].head(30).copy()
-    preview.insert(0, "Row Number", [int(index) + 2 for index in preview.index])
+    preview = pd.DataFrame(dataframe.loc[:, preview_columns]).head(30).copy()
+    preview.insert(
+        0,
+        "Row Number",
+        pd.Series(
+            [
+                _excel_row_number(index, fallback)
+                for fallback, index in enumerate(preview.index, start=2)
+            ],
+            index=preview.index,
+        ),
+    )
 
     return ExcelValidationResult(
         success=not errors,
@@ -407,7 +437,7 @@ def build_validation_error_report(result: ExcelValidationResult) -> bytes:
         for message in messages
     ]
     output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+    with pd.ExcelWriter(cast(Any, output), engine="openpyxl") as writer:
         report.to_excel(writer, sheet_name=SHEET_NAME, index=False)
     return output.getvalue()
 

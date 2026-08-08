@@ -8,8 +8,8 @@ from services.smart_import_service import (
     build_import_error_report,
     build_resolution_table,
     candidate_label,
-    display_asset_name,
     detect_account_keyword,
+    display_asset_name,
     enrich_import_row,
     finalize_import_rows,
     resolution_summary,
@@ -228,7 +228,8 @@ def test_account_keywords_skip_before_resolver() -> None:
         calls: list[str] = []
         result = enrich_import_row(
             _base_row(asset_name=f"테스트 {keyword} 자산", asset_type="미국주식"),
-            resolver=lambda query: calls.append(query) or AssetResolution(query, "unknown"),
+            resolver=lambda query, calls=calls: calls.append(query)
+            or AssetResolution(query, "unknown"),
         )
         assert calls == []
         assert result.status == "skipped"
@@ -386,6 +387,7 @@ def test_resolution_table_and_summary_cover_every_status() -> None:
 
 def test_error_report_keeps_original_columns_and_appends_resolution_fields() -> None:
     from io import BytesIO
+
     import pandas as pd
 
     source_dataframe = pd.DataFrame([{
@@ -429,7 +431,10 @@ def test_single_table_results_are_finalized_for_existing_import_service() -> Non
 
 def test_ticker_edits_use_session_state_without_forced_navigation_rerun() -> None:
     import inspect
-    from components.asset_management.import_candidate_picker import render_candidate_pickers
+
+    from components.asset_management.import_candidate_picker import (
+        render_candidate_pickers,
+    )
 
     source = inspect.getsource(render_candidate_pickers)
     assert "st.session_state[selection_key]" in source
@@ -438,7 +443,10 @@ def test_ticker_edits_use_session_state_without_forced_navigation_rerun() -> Non
 
 def test_picker_keeps_manual_input_as_last_dropdown_option() -> None:
     import inspect
-    from components.asset_management.import_candidate_picker import render_candidate_pickers
+
+    from components.asset_management.import_candidate_picker import (
+        render_candidate_pickers,
+    )
 
     source = inspect.getsource(render_candidate_pickers)
     assert "Ticker candidates" in source
@@ -450,8 +458,8 @@ def test_picker_keeps_manual_input_as_last_dropdown_option() -> None:
 
 def test_candidate_dropdown_keeps_every_candidate_before_manual_option() -> None:
     import pickle
+
     from components.asset_management.import_candidate_picker import (
-        MANUAL_OPTION,
         build_ticker_dropdown_options,
     )
 

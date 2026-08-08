@@ -14,7 +14,6 @@ from ui.analysis.currency_views import (
     render_krw_conversion,
 )
 
-
 ASSET_TYPES = [
     "국내주식",
     "미국주식",
@@ -205,6 +204,9 @@ if result:
             width="stretch",
             key="company_analysis_candidate_submit",
         ):
+            if not isinstance(selected_candidate, dict):
+                st.warning("분석할 종목을 선택해 주세요.")
+                st.stop()
             with st.spinner("선택한 종목을 분석하고 있습니다..."):
                 st.session_state[SESSION_RESULT_KEY] = analyze_company(
                     asset_type=selected_candidate["asset_type"],

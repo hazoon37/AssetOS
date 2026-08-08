@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
 import unicodedata
+from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
-
 
 STANDARD_COLUMNS = {
     "자산종류",
@@ -118,14 +117,16 @@ def map_import_columns(dataframe: pd.DataFrame) -> ImportMappingResult:
             None,
         )
         if holding_amount_column is not None and "수량" in result.columns:
-            amounts = pd.to_numeric(
-                result[holding_amount_column].astype(str).str.replace(",", "", regex=False),
+            amount_source = pd.Series(result[holding_amount_column], index=result.index)
+            quantity_source = pd.Series(result["수량"], index=result.index)
+            amounts = pd.Series(pd.to_numeric(
+                amount_source.astype(str).str.replace(",", "", regex=False),
                 errors="coerce",
-            )
-            quantities = pd.to_numeric(
-                result["수량"].astype(str).str.replace(",", "", regex=False),
+            ), index=result.index)
+            quantities = pd.Series(pd.to_numeric(
+                quantity_source.astype(str).str.replace(",", "", regex=False),
                 errors="coerce",
-            )
+            ), index=result.index)
             result["평균단가"] = amounts.div(quantities.where(quantities.ne(0)))
             mappings[str(holding_amount_column)] = "평균단가 (보유금액 ÷ 수량)"
             if (quantities.eq(0) & amounts.notna()).any():

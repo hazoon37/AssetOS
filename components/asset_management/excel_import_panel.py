@@ -4,6 +4,7 @@ import hashlib
 
 import streamlit as st
 
+from components.asset_management.import_candidate_picker import render_candidate_pickers
 from database.db import get_accounts
 from services.excel_asset_service import (
     build_validation_error_report,
@@ -16,7 +17,6 @@ from services.smart_import_service import (
     finalize_import_rows,
     resolution_state,
 )
-from components.asset_management.import_candidate_picker import render_candidate_pickers
 
 
 def render_excel_import_panel() -> None:

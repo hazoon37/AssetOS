@@ -2,15 +2,30 @@ import streamlit as st
 
 from components.quick_analysis_panel import render_quick_analysis_panel
 from components.settings_panel import load_preferences, render_settings_panel
-from services.auth import current_google_user, login_with_google, logout_google
+from services.auth import (
+    AuthenticatedUser,
+    current_google_user,
+    login_as_developer,
+    login_as_guest,
+    login_with_google,
+    logout_google,
+)
 from services.auth.user_service import UserService
 from services.local_user_service import get_browser_local_user_id, initialize_local_user
+from services.pilot_support_service import (
+    FEEDBACK_CATEGORIES,
+    get_release_info,
+    install_exception_logging,
+    submit_feedback,
+)
+from services.user_context import current_user
 
 st.set_page_config(
     page_title="AssetOS",
     page_icon="📊",
     layout="wide",
 )
+install_exception_logging()
 
 local_user_id = get_browser_local_user_id()
 if local_user_id is None:
@@ -21,11 +36,12 @@ if local_user_id is None:
     st.caption("✓ 포트폴리오 준비")
     st.caption("잠시만 기다려주세요...")
     st.stop()
+assert local_user_id is not None
 initialize_local_user(local_user_id)
 st.session_state["assetos_user_id"] = local_user_id
 
 
-def render_login_screen() -> None:
+def render_login_screen(developer_user_id: str) -> None:
     st.markdown("# AssetOS")
     st.markdown("자산을 한눈에 보고, 더 나은 투자 결정을 시작하세요.")
     google_column, guest_column, developer_column = st.columns(3)
@@ -37,25 +53,47 @@ def render_login_screen() -> None:
                 st.error(str(error))
     with guest_column:
         if st.button("체험하기", width="stretch"):
-            UserService().start_guest()
+            login_as_guest()
             st.rerun()
     with developer_column:
         if st.button("Developer Login", width="stretch"):
-            UserService().start_developer(local_user_id)
+            login_as_developer(developer_user_id)
             st.rerun()
 
 
 user_service = UserService()
 authenticated_user = current_google_user(user_service) or user_service.current()
 if authenticated_user is None:
-    render_login_screen()
+    render_login_screen(local_user_id)
     st.stop()
+assert authenticated_user is not None
 
 preferences = load_preferences()
 
 
-def render_auth_sidebar() -> None:
-    user = authenticated_user
+@st.dialog("AssetOS 정보")
+def open_about_dialog() -> None:
+    release = get_release_info()
+    st.markdown("### AssetOS")
+    st.write(f"Version: {release.version}")
+    st.write(f"Build: {release.build}")
+    st.write(f"Git Tag: {release.git_tag}")
+
+
+@st.dialog("피드백 보내기")
+def open_feedback_dialog(user_id: str) -> None:
+    with st.form("pilot_feedback", clear_on_submit=True):
+        category = st.selectbox("유형", FEEDBACK_CATEGORIES)
+        comment = st.text_area("내용", max_chars=2000)
+        if st.form_submit_button("보내기", type="primary", width="stretch"):
+            try:
+                submit_feedback(user_id, category, comment)
+                st.success("피드백이 저장되었습니다. 감사합니다.")
+            except ValueError as error:
+                st.warning(str(error))
+
+
+def render_auth_sidebar(user: AuthenticatedUser) -> None:
     with st.sidebar:
         if user.avatar_url:
             st.image(user.avatar_url, width=48)
@@ -63,11 +101,18 @@ def render_auth_sidebar() -> None:
             st.markdown("### 👤")
         st.markdown(f"**{user.name}**")
         st.caption(user.email)
+        about_column, feedback_column = st.columns(2)
+        with about_column:
+            if st.button("정보", width="stretch"):
+                open_about_dialog()
+        with feedback_column:
+            if st.button("피드백", width="stretch"):
+                open_feedback_dialog(current_user().id)
         if st.button("로그아웃", width="stretch"):
             logout_google()
 
 
-render_auth_sidebar()
+render_auth_sidebar(authenticated_user)
 render_settings_panel(preferences)
 
 

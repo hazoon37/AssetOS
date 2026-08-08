@@ -12,7 +12,9 @@ def calculate_assets(
     """Add portfolio calculations without rendering any UI."""
     df = assets_df.copy()
     for column in ["quantity", "average_price", "current_price"]:
-        df[column] = pd.to_numeric(df[column], errors="coerce").fillna(0.0)
+        source = pd.Series(df[column], index=df.index)
+        numeric = pd.Series(pd.to_numeric(source, errors="coerce"), index=df.index)
+        df[column] = numeric.fillna(0.0)
 
     calculated = df.apply(
         lambda row: calculate_asset_values(

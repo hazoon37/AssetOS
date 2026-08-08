@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -49,7 +50,10 @@ def format_quantity_value(value: float, asset_type: str) -> str:
 
 
 def safe_text(value: object) -> str:
-    if value is None or pd.isna(value):
+    if value is None:
+        return ""
+    missing = pd.isna(value)
+    if isinstance(missing, (bool, np.bool_)) and bool(missing):
         return ""
     return str(value)
 
