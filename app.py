@@ -8,6 +8,7 @@ from services.auth import (
     login_as_developer,
     login_as_guest,
     login_with_google,
+    logout_google,
 )
 from services.auth.session import (
     consume_guest_fallback,
@@ -155,6 +156,8 @@ def render_auth_sidebar(user: AuthenticatedUser) -> None:
         with feedback_column:
             if st.button("피드백", width="stretch"):
                 open_feedback_dialog(current_user().id)
+        if st.button("로그아웃", width="stretch"):
+            logout_google()
 
 
 render_auth_sidebar(authenticated_user)
