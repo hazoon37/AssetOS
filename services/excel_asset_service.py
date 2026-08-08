@@ -18,6 +18,7 @@ from repositories import get_asset_repository
 from repositories.asset_repository import AssetRepository
 from services.import_detector import ImportFileType, detect_import_file
 from services.import_mapping import map_import_columns
+from services.user_context import get_current_user_id
 
 SHEET_NAME = "Assets"
 REQUIRED_COLUMNS = {
@@ -446,6 +447,7 @@ def import_asset_excel(
     file: BinaryIO | bytes,
     repository: AssetRepository | None = None,
     account_id: int | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     validation = validate_asset_excel(file)
     if not validation.success:
@@ -458,11 +460,16 @@ def import_asset_excel(
         }
 
     target = repository or get_asset_repository()
+    owner = str(user_id or get_current_user_id())
     backup_path = target.backup()
     if account_id is None:
-        target.replace_all_assets(validation.rows)
+        target.replace_all_assets(validation.rows, user_id=owner)
     else:
-        target.replace_all_assets(validation.rows, account_id=account_id)
+        target.replace_all_assets(
+            validation.rows,
+            user_id=owner,
+            account_id=account_id,
+        )
 
     return {
         "success": True,
@@ -478,6 +485,7 @@ def import_asset_rows(
     warnings: list[str] | None = None,
     repository: AssetRepository | None = None,
     account_id: int | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     """Apply already validated and resolved Smart Import rows atomically."""
     if not rows:
@@ -489,11 +497,12 @@ def import_asset_rows(
             "warnings": warnings or [],
         }
     target = repository or get_asset_repository()
+    owner = str(user_id or get_current_user_id())
     backup_path = target.backup()
     if account_id is None:
-        target.replace_all_assets(rows)
+        target.replace_all_assets(rows, user_id=owner)
     else:
-        target.replace_all_assets(rows, account_id=account_id)
+        target.replace_all_assets(rows, user_id=owner, account_id=account_id)
     return {
         "success": True,
         "imported_count": len(rows),

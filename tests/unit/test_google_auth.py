@@ -262,3 +262,34 @@ def test_guest_assets_migrate_once_when_google_session_starts() -> None:
         assert guest_repository.get_assets(guest_id).empty
         assert get_authenticated_user(state) == google
     set_current_user_id("default_user")
+
+
+def test_guest_transition_does_not_append_to_existing_google_portfolio() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        guest_repository = SQLiteAssetRepository(Path(directory) / "guest.db")
+        google_repository = SQLiteAssetRepository(Path(directory) / "google.db")
+        guest = AuthenticatedUser(
+            "guest-123", "guest@assetos.local", "Guest", provider="guest"
+        )
+        google = AuthenticatedUser("google-123", "user@example.com", "Asset User")
+        guest_id = "guest:guest-123"
+        google_id = google_user_id(google.email)
+        guest_repository.ensure_user(guest_id, guest.email, guest.name)
+        guest_repository.save_assets([dict(GUEST_SAMPLE_ASSETS[0])], user_id=guest_id)
+        google_repository.ensure_user(google_id, google.email, google.name)
+        google_repository.save_assets(
+            [dict(GUEST_SAMPLE_ASSETS[1])], user_id=google_id
+        )
+        state: dict[str, object] = {}
+        save_authenticated_user(guest, state)
+        service = UserService(_StateStore(state), google_repository)
+
+        with patch(
+            "services.auth.user_service.activate_user_repository",
+            return_value=guest_repository,
+        ):
+            service.transition_to_google(google)
+
+        assert google_repository.get_assets(google_id)["symbol"].tolist() == ["QQQ"]
+        assert guest_repository.get_assets(guest_id).empty
+    set_current_user_id("default_user")

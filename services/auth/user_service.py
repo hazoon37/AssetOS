@@ -102,12 +102,11 @@ class UserService:
                 target_account_id = created.id
                 target_accounts[account_name] = target_account_id
             assets = source.get_assets(source_user_id, int(account["id"]))
-            if not assets.empty:
-                target.save_assets(
-                    assets.to_dict("records"),
-                    user_id=target_user_id,
-                    account_id=target_account_id,
-                )
+            target.replace_all_assets(
+                assets.to_dict("records"),
+                user_id=target_user_id,
+                account_id=target_account_id,
+            )
         preferences = source.get_preferences(source_user_id)
         target.save_preferences(
             preferences.base_currency,
@@ -166,13 +165,18 @@ class UserService:
         if previous is not None and previous.provider.lower() == "guest":
             guest_user_id = self._repository_user_id(previous)
             guest_repository = activate_user_repository(guest_user_id)
-            if not guest_repository.get_assets(guest_user_id).empty:
+            guest_has_assets = not guest_repository.get_assets(guest_user_id).empty
+            google_has_assets = not self.repository.get_assets(
+                self._repository_user_id(user)
+            ).empty
+            if guest_has_assets and not google_has_assets:
                 self._copy_user_scope(
                     guest_repository,
                     guest_user_id,
                     self.repository,
                     self._repository_user_id(user),
                 )
+            if guest_has_assets:
                 guest_repository.replace_all_assets([], user_id=guest_user_id)
         self.store.save(user)
         return user

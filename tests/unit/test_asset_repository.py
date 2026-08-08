@@ -83,7 +83,9 @@ class SQLiteAssetRepositoryTests(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertEqual(result["backup_path"], "backup.db")
         repository.backup.assert_called_once_with()
-        repository.replace_all_assets.assert_called_once_with([_row()])
+        repository.replace_all_assets.assert_called_once_with(
+            [_row()], user_id=DEFAULT_USER_ID
+        )
 
     def test_legacy_database_migrates_to_default_user_without_data_loss(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -227,7 +229,35 @@ class SQLiteAssetRepositoryTests(unittest.TestCase):
         result = import_asset_rows([_row()], repository=repository, account_id=7)
 
         self.assertTrue(result["success"])
-        repository.replace_all_assets.assert_called_once_with([_row()], account_id=7)
+        repository.replace_all_assets.assert_called_once_with(
+            [_row()], user_id=DEFAULT_USER_ID, account_id=7
+        )
+
+    def test_excel_import_uses_explicit_user_during_fragment_context_reset(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = SQLiteAssetRepository(Path(directory) / "user.db")
+            user_id = "google-user"
+            repository.ensure_user(user_id, "user@example.com", "Asset User")
+            account_id = int(repository.get_accounts(user_id).iloc[0]["id"])
+            repository.save_assets(
+                [_row("Apple", "AAPL")],
+                user_id=user_id,
+                account_id=account_id,
+            )
+
+            result = import_asset_rows(
+                [_row("NVIDIA", "NVDA")],
+                repository=repository,
+                account_id=account_id,
+                user_id=user_id,
+            )
+
+            self.assertTrue(result["success"])
+            self.assertEqual(
+                repository.get_assets(user_id, account_id)["symbol"].tolist(),
+                ["NVDA"],
+            )
+            self.assertTrue(repository.get_assets(DEFAULT_USER_ID).empty)
 
     def test_preferences_are_persisted_and_validated(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

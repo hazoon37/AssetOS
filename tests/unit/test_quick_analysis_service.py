@@ -32,4 +32,6 @@ def test_save_mode_uses_existing_atomic_import_service() -> None:
     )
     assert result["success"] is True
     repository.backup.assert_called_once_with()
-    repository.replace_all_assets.assert_called_once_with(_rows(), account_id=7)
+    repository.replace_all_assets.assert_called_once_with(
+        _rows(), user_id="default_user", account_id=7
+    )

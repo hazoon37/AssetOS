@@ -5,7 +5,9 @@ import hashlib
 import streamlit as st
 
 from components.asset_management.import_candidate_picker import render_candidate_pickers
-from database.db import get_accounts
+from repositories import activate_user_repository
+from services.auth.local_user import repository_user_id
+from services.auth.session import get_authenticated_user
 from services.excel_asset_service import (
     build_validation_error_report,
     import_asset_rows,
@@ -17,6 +19,7 @@ from services.smart_import_service import (
     finalize_import_rows,
     resolution_state,
 )
+from services.user_context import get_current_user_id
 
 
 def render_excel_import_panel() -> None:
@@ -29,7 +32,14 @@ def render_excel_import_panel() -> None:
         "'Apply Changes'를 눌러야 현재 자산 목록 전체가 Excel 내용으로 교체됩니다."
     )
 
-    accounts = get_accounts()
+    authenticated_user = get_authenticated_user()
+    user_id = (
+        repository_user_id(authenticated_user)
+        if authenticated_user is not None
+        else get_current_user_id()
+    )
+    repository = activate_user_repository(user_id)
+    accounts = repository.get_accounts(user_id)
     if accounts.empty:
         st.error("가져올 대상 계정을 찾지 못했습니다.")
         return
@@ -146,7 +156,9 @@ def render_excel_import_panel() -> None:
             result = import_asset_rows(
                 import_rows,
                 validation.warnings,
+                repository=repository,
                 account_id=target_account_id,
+                user_id=user_id,
             )
 
         if result.get("success"):
