@@ -5,13 +5,14 @@ from components.settings_panel import load_preferences, render_settings_panel
 from services.auth import (
     AuthenticatedUser,
     current_google_user,
-    google_auth_is_configured,
     login_as_developer,
     login_as_guest,
     login_with_google,
-    logout_google,
 )
-from services.auth.session import consume_guest_fallback, request_guest_fallback
+from services.auth.session import (
+    consume_guest_fallback,
+    request_guest_fallback,
+)
 from services.auth.user_service import UserService
 from services.local_user_service import get_browser_local_user_id, initialize_local_user
 from services.pilot_support_service import (
@@ -30,6 +31,7 @@ st.set_page_config(
 install_exception_logging()
 
 local_user_id = get_browser_local_user_id()
+print(f"[STARTUP 1] local_user_id={local_user_id!r}")
 if local_user_id is None:
     st.markdown("## AssetOS")
     st.markdown("내 자산을 불러오는 중...")
@@ -54,29 +56,58 @@ def render_login_screen(developer_user_id: str) -> None:
             except RuntimeError as error:
                 request_guest_fallback(str(error))
                 login_as_guest()
+                print("[STARTUP 7] st.rerun() executed=True")
                 st.rerun()
     with guest_column:
         if st.button("체험하기", width="stretch"):
             login_as_guest()
+            print("[STARTUP 7] st.rerun() executed=True")
             st.rerun()
     with developer_column:
         if st.button("Developer Login", width="stretch"):
             login_as_developer(developer_user_id)
+            print("[STARTUP 7] st.rerun() executed=True")
             st.rerun()
 
 
 user_service = UserService()
-authenticated_user = current_google_user(user_service) or user_service.current()
+google_user = current_google_user(user_service)
+print(f"[STARTUP 2] current_google_user()={google_user!r}")
+print("[STARTUP 3] restore_browser_local_session()=NOT_CALLED")
+authenticated_user = google_user
 if authenticated_user is None:
+    current_session_user = user_service.current()
+else:
+    current_session_user = authenticated_user
+print(f"[STARTUP 4] user_service.current()={current_session_user!r}")
+authenticated_user = current_session_user
+print(f"[STARTUP 5] authenticated_user={authenticated_user!r}")
+if authenticated_user is None:
+    startup_branch = "LOGIN_SCREEN"
+    print(f"[STARTUP 6] branch={startup_branch}")
     fallback_message = consume_guest_fallback()
-    if fallback_message or not google_auth_is_configured():
-        st.info(fallback_message or "Google OAuth 설정이 없어 Guest Mode로 시작합니다.")
-        authenticated_user = login_as_guest()
-    else:
-        render_login_screen(local_user_id)
-        st.stop()
+    if fallback_message:
+        st.info(fallback_message)
+    render_login_screen(local_user_id)
+    print("[STARTUP 7] st.rerun() executed=False")
+    print("[STARTUP 8] navigation.run() reached=False")
+    st.stop()
 assert authenticated_user is not None
+startup_branch = {
+    "guest": "GUEST_AUTO",
+    "local": "DEVELOPER",
+    "google": "GOOGLE",
+}.get(authenticated_user.provider.lower(), authenticated_user.provider.upper())
+print(f"[STARTUP 6] branch={startup_branch}")
+print("[STARTUP 7] st.rerun() executed=False")
 
+navigation = st.navigation(
+    [
+        st.Page("pages/1_총_자산_현황.py", title="🏠 총 자산 현황", default=True),
+        st.Page("pages/2_포트폴리오_분석.py", title="📊 포트폴리오 분석"),
+        st.Page("pages/3_종목_분석.py", title="🔎 종목 분석"),
+    ]
+)
 preferences = load_preferences()
 
 
@@ -104,20 +135,19 @@ def open_feedback_dialog(user_id: str) -> None:
 
 def render_auth_sidebar(user: AuthenticatedUser) -> None:
     with st.sidebar:
+        provider = user.provider.lower()
+        account_label = {
+            "guest": "Guest",
+            "local": "Developer",
+            "google": "Google",
+        }.get(provider, user.provider.title())
+        st.caption("Current User")
+        st.markdown(f"**{account_label}**")
         if user.avatar_url:
             st.image(user.avatar_url, width=48)
         display_name = user.name or user.email or "Guest"
         st.markdown(f"**👤 {display_name}**")
         st.caption(user.email)
-        if user.provider.lower() == "guest":
-            if google_auth_is_configured():
-                if st.button("Google로 로그인", type="primary", width="stretch"):
-                    try:
-                        login_with_google()
-                    except RuntimeError as error:
-                        st.warning(str(error))
-            else:
-                st.caption("Google 로그인을 설정하면 사용할 수 있습니다.")
         about_column, feedback_column = st.columns(2)
         with about_column:
             if st.button("정보", width="stretch"):
@@ -125,8 +155,6 @@ def render_auth_sidebar(user: AuthenticatedUser) -> None:
         with feedback_column:
             if st.button("피드백", width="stretch"):
                 open_feedback_dialog(current_user().id)
-        if st.button("로그아웃", width="stretch"):
-            logout_google()
 
 
 render_auth_sidebar(authenticated_user)
@@ -142,11 +170,5 @@ with st.sidebar:
     if st.button("📄 Quick Analysis", type="primary", width="stretch"):
         open_quick_analysis()
 
-navigation = st.navigation(
-    [
-        st.Page("pages/1_총_자산_현황.py", title="🏠 총 자산 현황", default=True),
-        st.Page("pages/2_포트폴리오_분석.py", title="📊 포트폴리오 분석"),
-        st.Page("pages/3_종목_분석.py", title="🔎 종목 분석"),
-    ]
-)
+print("[STARTUP 8] navigation.run() reached=True")
 navigation.run()
