@@ -109,6 +109,46 @@
 
 --------------------------------
 
+## v0.3.1
+
+### Changed
+
+- Guest sidebar always exposes Google login when OAuth is configured
+- Missing OAuth configuration shows a concise setup notice instead of a disabled button
+- Successful Google login migrates Guest portfolio data before ending the Guest session
+
+### Fixed
+
+- Automatic Guest fallback no longer makes the Google upgrade path inaccessible
+
+--------------------------------
+
+## v0.3.0
+
+### Added
+
+- Google email SHA-256 user identity generation
+- Per-user `portfolio.db`, `feedback.db`, and `logs.db` storage directories
+- Automatic Guest fallback for missing secrets, invalid claims, auth errors, and logout
+
+### Changed
+
+- Repository selection now follows the request-scoped User Context without global
+  cross-session switching
+- Sidebar identity display consistently distinguishes Google and Guest users
+- Existing shared SQLite user rows are copied into isolated storage on first activation
+
+### Fixed
+
+- Guest and Google portfolios, feedback, and error records can no longer share files
+
+### Known Issues
+
+- Per-user SQLite files remain ephemeral on Streamlit Community Cloud
+- Live two-account OAuth verification requires the deployed URL and two Google pilot users
+
+--------------------------------
+
 ## v0.2.9
 
 ### Added

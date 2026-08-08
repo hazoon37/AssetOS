@@ -5,11 +5,13 @@ from components.settings_panel import load_preferences, render_settings_panel
 from services.auth import (
     AuthenticatedUser,
     current_google_user,
+    google_auth_is_configured,
     login_as_developer,
     login_as_guest,
     login_with_google,
     logout_google,
 )
+from services.auth.session import consume_guest_fallback, request_guest_fallback
 from services.auth.user_service import UserService
 from services.local_user_service import get_browser_local_user_id, initialize_local_user
 from services.pilot_support_service import (
@@ -50,7 +52,9 @@ def render_login_screen(developer_user_id: str) -> None:
             try:
                 login_with_google()
             except RuntimeError as error:
-                st.error(str(error))
+                request_guest_fallback(str(error))
+                login_as_guest()
+                st.rerun()
     with guest_column:
         if st.button("체험하기", width="stretch"):
             login_as_guest()
@@ -64,8 +68,13 @@ def render_login_screen(developer_user_id: str) -> None:
 user_service = UserService()
 authenticated_user = current_google_user(user_service) or user_service.current()
 if authenticated_user is None:
-    render_login_screen(local_user_id)
-    st.stop()
+    fallback_message = consume_guest_fallback()
+    if fallback_message or not google_auth_is_configured():
+        st.info(fallback_message or "Google OAuth 설정이 없어 Guest Mode로 시작합니다.")
+        authenticated_user = login_as_guest()
+    else:
+        render_login_screen(local_user_id)
+        st.stop()
 assert authenticated_user is not None
 
 preferences = load_preferences()
@@ -97,10 +106,18 @@ def render_auth_sidebar(user: AuthenticatedUser) -> None:
     with st.sidebar:
         if user.avatar_url:
             st.image(user.avatar_url, width=48)
-        else:
-            st.markdown("### 👤")
-        st.markdown(f"**{user.name}**")
+        display_name = user.name or user.email or "Guest"
+        st.markdown(f"**👤 {display_name}**")
         st.caption(user.email)
+        if user.provider.lower() == "guest":
+            if google_auth_is_configured():
+                if st.button("Google로 로그인", type="primary", width="stretch"):
+                    try:
+                        login_with_google()
+                    except RuntimeError as error:
+                        st.warning(str(error))
+            else:
+                st.caption("Google 로그인을 설정하면 사용할 수 있습니다.")
         about_column, feedback_column = st.columns(2)
         with about_column:
             if st.button("정보", width="stretch"):

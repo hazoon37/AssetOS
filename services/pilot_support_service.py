@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-import json
 import logging
 import os
+import sqlite3
 import subprocess
 import sys
 import threading
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from types import TracebackType
 
+from services.user_context import get_current_user_id
+from services.user_storage_service import feedback_database_path, log_database_path
+
 BASE_DIR = Path(__file__).resolve().parent.parent
-FEEDBACK_PATH = BASE_DIR / "data" / "feedback.jsonl"
-ERROR_LOG_PATH = BASE_DIR / "logs" / "assetos.log"
-VERSION = "0.2.7"
+VERSION = "0.3.0"
 FEEDBACK_CATEGORIES = ("Bug", "Suggestion", "Comment")
 _feedback_lock = threading.Lock()
 _exception_hook_installed = False
@@ -64,9 +64,9 @@ def submit_feedback(
     user_id: str,
     category: str,
     comment: str,
-    destination: Path = FEEDBACK_PATH,
+    destination: Path | None = None,
 ) -> FeedbackEntry:
-    """Append one validated feedback entry to lightweight local storage."""
+    """Store one validated feedback entry in the user's isolated database."""
     owner = str(user_id or "").strip()
     kind = str(category or "").strip()
     message = str(comment or "").strip()
@@ -79,21 +79,69 @@ def submit_feedback(
     if len(message) > 2000:
         raise ValueError("피드백은 2,000자 이하로 입력해 주세요.")
     entry = FeedbackEntry(owner, kind, message, datetime.now(UTC).isoformat())
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    with _feedback_lock, destination.open("a", encoding="utf-8") as output:
-        output.write(json.dumps(asdict(entry), ensure_ascii=False) + "\n")
+    database_path = destination or feedback_database_path(owner)
+    database_path.parent.mkdir(parents=True, exist_ok=True)
+    with _feedback_lock, sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                category TEXT NOT NULL,
+                comment TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            "INSERT INTO feedback (user_id, category, comment, created_at) VALUES (?, ?, ?, ?)",
+            (entry.user_id, entry.category, entry.comment, entry.created_at),
+        )
     return entry
 
 
-def get_error_logger(log_path: Path = ERROR_LOG_PATH) -> logging.Logger:
-    """Return one size-bounded application error logger."""
-    logger = logging.getLogger("assetos")
+class SQLiteLogHandler(logging.Handler):
+    def __init__(self, database_path: Path) -> None:
+        super().__init__(logging.ERROR)
+        self.database_path = database_path
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            self.database_path.parent.mkdir(parents=True, exist_ok=True)
+            with sqlite3.connect(self.database_path) as connection:
+                connection.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS error_logs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        level TEXT NOT NULL,
+                        message TEXT NOT NULL,
+                        created_at TEXT NOT NULL
+                    )
+                    """
+                )
+                connection.execute(
+                    "INSERT INTO error_logs (level, message, created_at) VALUES (?, ?, ?)",
+                    (
+                        record.levelname,
+                        self.format(record),
+                        datetime.now(UTC).isoformat(),
+                    ),
+                )
+        except (OSError, sqlite3.Error):
+            self.handleError(record)
+
+
+def get_error_logger(
+    log_path: Path | None = None,
+    user_id: str | None = None,
+) -> logging.Logger:
+    """Return the error logger for one isolated user database."""
+    owner = str(user_id or get_current_user_id())
+    database_path = log_path or log_database_path(owner)
+    logger = logging.getLogger(f"assetos.{database_path}")
     if logger.handlers:
         return logger
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    handler = RotatingFileHandler(
-        log_path, maxBytes=1_000_000, backupCount=3, encoding="utf-8"
-    )
+    handler = SQLiteLogHandler(database_path)
     handler.setFormatter(logging.Formatter(
         "%(asctime)s %(levelname)s %(name)s %(message)s"
     ))

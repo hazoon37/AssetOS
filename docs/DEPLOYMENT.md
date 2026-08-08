@@ -99,7 +99,11 @@ Secrets rather than environment variables or source code.
 
 ## 7. SQLite pilot limitation
 
+Each identity uses isolated files under `database/users/<user-id>/`: `portfolio.db`,
+`feedback.db`, and `logs.db`. Google user IDs are SHA-256 hashes of normalized email
+addresses. Guest and Developer identities use different directories.
+
 SQLite remains instance-local. Streamlit Community Cloud may replace, restart, or move
-the container, which can remove portfolios, feedback, and error logs. This release is
-suitable only for a controlled, recoverable pilot. Export or backup pilot data regularly,
-and move the Repository implementation to durable storage before general availability.
+the container, which can remove all of these files. This release is suitable only for a
+controlled, recoverable pilot. Export or backup pilot data regularly, and move the
+Repository implementation to durable storage before general availability.

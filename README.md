@@ -21,6 +21,7 @@ AssetOS는 주식·ETF·코인·현금·부동산을 계정별로 관리하고 �
 - System·Light·Dark 테마
 - 검증된 SQLite 전체 백업 및 원자적 복구
 - Repository Pattern과 자동 구버전 DB 마이그레이션
+- Google 이메일 SHA-256 ID 기반 사용자별 SQLite 저장소
 
 ## 로컬 실행
 
@@ -67,6 +68,13 @@ checks are documented in [Deployment Guide](docs/DEPLOYMENT.md).
 SQLite와 `data/backups`는 Community Cloud 재시작 시 영구 보존을 보장하지
 않습니다. v1.0 로컬/단일 인스턴스에서는 설정의 백업 다운로드를 사용하고,
 지속형 다중 인스턴스 배포는 향후 원격 Repository 구현을 사용해야 합니다.
+
+로그인한 사용자 데이터는 `database/users/<sha256-user-id>/portfolio.db`에,
+피드백과 오류 기록은 같은 디렉터리의 `feedback.db`, `logs.db`에 분리됩니다.
+OAuth 설정이 없거나 로그인 정보를 확인할 수 없으면 앱은 종료되지 않고 Guest
+Mode로 전환됩니다.
+Guest sidebar에는 OAuth가 설정된 경우 Google 로그인 버튼이 항상 표시되며,
+로그인 성공 시 Guest 포트폴리오를 Google 사용자 DB로 이전합니다.
 
 ## 데이터 마이그레이션
 

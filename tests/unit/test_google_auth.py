@@ -3,19 +3,26 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+import pytest
+from streamlit.errors import StreamlitAuthError, StreamlitSecretNotFoundError
+
 from models.user import User
 from repositories.sqlite_asset_repository import SQLiteAssetRepository
 from services.auth.google_auth import (
     current_google_user,
+    google_auth_is_configured,
     google_user_from_claims,
     login_with_google,
     logout_google,
 )
+from services.auth.local_user import google_user_id
 from services.auth.session import (
     AuthenticatedUser,
     clear_authenticated_user,
+    consume_guest_fallback,
     get_authenticated_user,
     get_or_create_guest_user_id,
+    request_guest_fallback,
     save_authenticated_user,
 )
 from services.auth.user_service import GUEST_SAMPLE_ASSETS, UserService
@@ -56,10 +63,24 @@ def test_google_claims_require_subject_and_email() -> None:
     assert google_user_from_claims({"sub": "google-123"}) is None
 
 
+def test_missing_secrets_report_google_as_unconfigured() -> None:
+    with patch(
+        "services.auth.google_auth.st.secrets",
+        SimpleNamespace(get=Mock(side_effect=StreamlitSecretNotFoundError("missing"))),
+    ):
+        assert google_auth_is_configured() is False
+
+
+def test_google_user_id_is_stable_normalized_sha256() -> None:
+    first = google_user_id(" User@Example.com ")
+    assert first == google_user_id("user@example.com")
+    assert len(first) == 64
+
+
 def test_google_login_claims_activate_persistent_session_user() -> None:
     expected = AuthenticatedUser("google-123", "user@example.com", "Asset User")
     service = Mock()
-    service.remember.return_value = expected
+    service.transition_to_google.return_value = expected
     streamlit_user = SimpleNamespace(
         is_logged_in=True,
         to_dict=lambda: {
@@ -68,7 +89,7 @@ def test_google_login_claims_activate_persistent_session_user() -> None:
     )
     with patch("services.auth.google_auth.st.user", streamlit_user):
         assert current_google_user(service) == expected
-    service.remember.assert_called_once_with(expected)
+    service.transition_to_google.assert_called_once_with(expected)
 
 
 def test_google_login_uses_named_streamlit_provider() -> None:
@@ -77,6 +98,23 @@ def test_google_login_uses_named_streamlit_provider() -> None:
     ), patch("services.auth.google_auth.st.login") as login:
         login_with_google()
     login.assert_called_once_with("google")
+
+
+def test_google_login_error_becomes_friendly_runtime_error() -> None:
+    with patch(
+        "services.auth.google_auth.google_auth_is_configured", return_value=True
+    ), patch(
+        "services.auth.google_auth.st.login",
+        side_effect=StreamlitAuthError("cookie failure"),
+    ), pytest.raises(RuntimeError, match="Guest Mode"):
+        login_with_google()
+
+
+def test_guest_fallback_message_is_consumed_once() -> None:
+    state: dict[str, object] = {}
+    request_guest_fallback("OAuth failed", state)
+    assert consume_guest_fallback(state) == "OAuth failed"
+    assert consume_guest_fallback(state) == ""
 
 
 def test_logout_clears_local_session_without_google_redirect() -> None:
@@ -111,7 +149,7 @@ def test_authenticated_user_sets_sqlite_repository_scope() -> None:
     state: dict[str, object] = {}
     repository = Mock()
     repository.ensure_user.return_value = User(
-        id="google:google-123",
+        id=google_user_id("user@example.com"),
         email="user@example.com",
         name="Asset User",
         created_at="2026-08-08 00:00:00",
@@ -124,9 +162,9 @@ def test_authenticated_user_sets_sqlite_repository_scope() -> None:
 
     assert service.remember(user) == user
     repository.ensure_user.assert_called_once_with(
-        "google:google-123", "user@example.com", "Asset User"
+        google_user_id("user@example.com"), "user@example.com", "Asset User"
     )
-    assert get_current_user_id() == "google:google-123"
+    assert get_current_user_id() == google_user_id("user@example.com")
     assert current_user().name == "Asset User"
     assert current_user().email == "user@example.com"
     assert current_user().photo == ""
@@ -195,4 +233,32 @@ def test_google_users_get_persistent_isolated_sqlite_portfolios() -> None:
         )
         UserService(_StateStore({}), repository).remember(second_user)
         assert repository.get_assets().empty
+    set_current_user_id("default_user")
+
+
+def test_guest_assets_migrate_once_when_google_session_starts() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        guest_repository = SQLiteAssetRepository(Path(directory) / "guest.db")
+        google_repository = SQLiteAssetRepository(Path(directory) / "google.db")
+        guest = AuthenticatedUser(
+            "guest-123", "guest@assetos.local", "Guest", provider="guest"
+        )
+        google = AuthenticatedUser("google-123", "user@example.com", "Asset User")
+        guest_id = "guest:guest-123"
+        guest_repository.ensure_user(guest_id, guest.email, guest.name)
+        guest_repository.save_assets([dict(GUEST_SAMPLE_ASSETS[0])], user_id=guest_id)
+        state: dict[str, object] = {}
+        save_authenticated_user(guest, state)
+        service = UserService(_StateStore(state), google_repository)
+
+        with patch(
+            "services.auth.user_service.activate_user_repository",
+            return_value=guest_repository,
+        ):
+            assert service.transition_to_google(google) == google
+
+        google_id = google_user_id(google.email)
+        assert google_repository.get_assets(google_id)["symbol"].tolist() == ["AAPL"]
+        assert guest_repository.get_assets(guest_id).empty
+        assert get_authenticated_user(state) == google
     set_current_user_id("default_user")

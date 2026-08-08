@@ -28,7 +28,7 @@ data/backups/
 
 # 로그
 *.log
-data/feedback.jsonl
+database/users/
 
 # 환경변수 파일
 .env

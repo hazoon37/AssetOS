@@ -9,6 +9,7 @@ import streamlit as st
 
 AUTH_SESSION_KEY = "assetos_authenticated_user"
 GUEST_USER_ID_KEY = "assetos_guest_user_id"
+GUEST_FALLBACK_KEY = "assetos_guest_fallback"
 
 
 @dataclass(frozen=True)
@@ -72,3 +73,17 @@ def get_or_create_guest_user_id(
     guest_user_id = str(uuid4())
     session[GUEST_USER_ID_KEY] = guest_user_id
     return guest_user_id
+
+
+def request_guest_fallback(
+    message: str = "",
+    state: MutableMapping[str, object] | None = None,
+) -> None:
+    _state(state)[GUEST_FALLBACK_KEY] = message or True
+
+
+def consume_guest_fallback(
+    state: MutableMapping[str, object] | None = None,
+) -> str:
+    value = _state(state).pop(GUEST_FALLBACK_KEY, "")
+    return str(value) if value is not True else ""

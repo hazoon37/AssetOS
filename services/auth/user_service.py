@@ -2,8 +2,13 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from repositories import get_asset_repository
+from repositories import (
+    activate_user_repository,
+    get_asset_repository,
+    get_legacy_asset_repository,
+)
 from repositories.asset_repository import AssetRepository
+from services.auth.local_user import repository_user_id
 from services.auth.session import (
     AuthenticatedUser,
     clear_authenticated_user,
@@ -67,18 +72,67 @@ class UserService:
         repository: AssetRepository | None = None,
     ) -> None:
         self.store = store or SessionUserProfileStore()
+        self._uses_default_repository = repository is None
         self.repository = repository or get_asset_repository()
 
     @staticmethod
     def _repository_user_id(user: AuthenticatedUser) -> str:
-        return (
-            user.subject
-            if user.provider.lower() == "local"
-            else f"{user.provider.lower()}:{user.subject}"
+        return repository_user_id(user)
+
+    @staticmethod
+    def _copy_user_scope(
+        source: AssetRepository,
+        source_user_id: str,
+        target: AssetRepository,
+        target_user_id: str,
+    ) -> None:
+        target_accounts = {
+            str(row["account_name"]): int(row["id"])
+            for _, row in target.get_accounts(target_user_id).iterrows()
+        }
+        for _, account in source.get_accounts(source_user_id).iterrows():
+            account_name = str(account["account_name"])
+            target_account_id = target_accounts.get(account_name)
+            if target_account_id is None:
+                created = target.create_account(
+                    account_name,
+                    str(account["account_type"]),
+                    target_user_id,
+                )
+                target_account_id = created.id
+                target_accounts[account_name] = target_account_id
+            assets = source.get_assets(source_user_id, int(account["id"]))
+            if not assets.empty:
+                target.save_assets(
+                    assets.to_dict("records"),
+                    user_id=target_user_id,
+                    account_id=target_account_id,
+                )
+        preferences = source.get_preferences(source_user_id)
+        target.save_preferences(
+            preferences.base_currency,
+            preferences.theme,
+            target_user_id,
         )
+
+    def _select_repository(self, user: AuthenticatedUser, user_id: str) -> None:
+        if not self._uses_default_repository:
+            return
+        source = get_legacy_asset_repository()
+        legacy_user_id = (
+            f"google:{user.subject}"
+            if user.provider.lower() == "google"
+            else user_id
+        )
+        target = activate_user_repository(user_id)
+        target.ensure_user(user_id, user.email, user.name)
+        if target.get_assets(user_id).empty and source.get_user(legacy_user_id) is not None:
+            self._copy_user_scope(source, legacy_user_id, target, user_id)
+        self.repository = target
 
     def _activate(self, user: AuthenticatedUser) -> None:
         repository_user_id = self._repository_user_id(user)
+        self._select_repository(user, repository_user_id)
         persisted = self.repository.ensure_user(
             repository_user_id,
             user.email,
@@ -102,6 +156,24 @@ class UserService:
 
     def remember(self, user: AuthenticatedUser) -> AuthenticatedUser:
         self._activate(user)
+        self.store.save(user)
+        return user
+
+    def transition_to_google(self, user: AuthenticatedUser) -> AuthenticatedUser:
+        """Migrate the active Guest scope before committing the Google session."""
+        previous = self.store.get()
+        self._activate(user)
+        if previous is not None and previous.provider.lower() == "guest":
+            guest_user_id = self._repository_user_id(previous)
+            guest_repository = activate_user_repository(guest_user_id)
+            if not guest_repository.get_assets(guest_user_id).empty:
+                self._copy_user_scope(
+                    guest_repository,
+                    guest_user_id,
+                    self.repository,
+                    self._repository_user_id(user),
+                )
+                guest_repository.replace_all_assets([], user_id=guest_user_id)
         self.store.save(user)
         return user
 

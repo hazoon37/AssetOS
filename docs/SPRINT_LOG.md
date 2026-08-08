@@ -1,5 +1,71 @@
 # Sprint Log
 
+## Sprint 5D — Guest to Google Transition
+
+### Goal
+
+Keep Guest fallback while making Google login continuously accessible and preserving
+Guest portfolio work during account conversion.
+
+### Completed
+
+- Added the Google login action to the Guest sidebar whenever OAuth is configured.
+- Added a friendly configuration notice when OAuth is unavailable.
+- Migrated Guest assets, accounts, and preferences into the Google user repository before
+  replacing the Guest session with the Google session.
+- Cleared migrated Guest assets only after the Google copy completed successfully.
+- Added regression coverage for callback activation and Guest-to-Google migration.
+
+### Known Issues
+
+- Portfolio migration spans two SQLite files and therefore cannot be one cross-database
+  transaction; the source is cleared only after the destination writes succeed.
+
+### Next Sprint
+
+- Verify the conversion flow with a deployed Google callback and a real Guest portfolio.
+
+## Sprint 5D — Google Login Activation
+
+### Goal
+
+Activate production Google authentication with deterministic user identity and complete
+file-level separation between Google, Guest, and Developer data.
+
+### Completed
+
+- Read Google credentials exclusively through Streamlit Secrets and retained the official
+  Streamlit 1.60 `st.user` API for verified claims.
+- Added normalized-email SHA-256 IDs and reusable user-specific SQLite directories.
+- Routed portfolios, feedback, and error logs to separate databases for each identity.
+- Added safe Guest fallback for missing OAuth configuration, invalid claims, login errors,
+  cookie/auth errors surfaced by Streamlit, and logout.
+- Kept User Context-based repository filtering inside each isolated portfolio database.
+- Added hashing, storage-path, repeat-login, and cross-user isolation regression coverage.
+
+### Modified Files
+
+- Authentication/UI: `app.py`, `services/auth/google_auth.py`,
+  `services/auth/local_user.py`, `services/auth/session.py`,
+  `services/auth/user_service.py`.
+- Storage: `repositories/__init__.py`, `services/user_storage_service.py`,
+  `services/pilot_support_service.py`, `.gitignore`.
+- Tests: `tests/unit/test_google_auth.py`, `tests/unit/test_pilot_support_service.py`,
+  `tests/unit/test_user_storage_service.py`.
+- Documentation: `README.md`, `docs/DEPLOYMENT.md`, `CHANGELOG.md`,
+  `docs/SPRINT_LOG.md`.
+
+### Known Issues
+
+- Streamlit Cloud can replace the local filesystem, including all user SQLite files.
+- Google redirect, cookie, and browser behavior require final testing on the deployed URL.
+- Automated tests cannot substitute for the requested two-real-Google-account pilot check.
+
+### Next Sprint
+
+- Execute the two-account Chrome/Edge pilot checklist on the production callback URL.
+- Replace local SQLite files with a durable repository before broader rollout.
+
 ## Sprint 5C — Deployment Ready
 
 ### Goal

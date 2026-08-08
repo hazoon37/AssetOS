@@ -1,5 +1,5 @@
-import json
 import logging
+import sqlite3
 import tempfile
 from pathlib import Path
 
@@ -23,10 +23,11 @@ def test_feedback_is_validated_and_written_as_jsonl() -> None:
     with tempfile.TemporaryDirectory() as directory:
         destination = Path(directory) / "feedback.jsonl"
         entry = submit_feedback("google:123", "Bug", "Import failed", destination)
-        stored = json.loads(destination.read_text(encoding="utf-8"))
-        assert stored["user_id"] == entry.user_id
-        assert stored["category"] == "Bug"
-        assert stored["comment"] == "Import failed"
+        with sqlite3.connect(destination) as connection:
+            stored = connection.execute(
+                "SELECT user_id, category, comment FROM feedback"
+            ).fetchone()
+        assert stored == (entry.user_id, "Bug", "Import failed")
         with pytest.raises(ValueError):
             submit_feedback("google:123", "Unknown", "Message", destination)
         with pytest.raises(ValueError):
@@ -43,7 +44,9 @@ def test_unexpected_exception_is_written_to_bounded_log() -> None:
             logger.exception("Unexpected exception [test]")
         for handler in logger.handlers:
             handler.flush()
-        assert "pilot failure" in destination.read_text(encoding="utf-8")
+        with sqlite3.connect(destination) as connection:
+            message = connection.execute("SELECT message FROM error_logs").fetchone()[0]
+        assert "pilot failure" in message
         for handler in tuple(logger.handlers):
             handler.close()
             logger.removeHandler(handler)
