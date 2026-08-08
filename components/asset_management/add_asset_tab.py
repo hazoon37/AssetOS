@@ -14,6 +14,7 @@ from services.exchange_rate_service import (
 from services.portfolio_service import (
     clear_portfolio_analysis_cache,
 )
+from ui.common.formatters import format_currency
 
 from .constants import (
     ACCOUNT_ASSET_TYPES,
@@ -33,7 +34,6 @@ from .helpers import (
     get_symbol_placeholder,
     safe_text,
 )
-
 
 # ==================================================
 # 자동입력 전용 상태 키
@@ -365,7 +365,7 @@ def _render_autofill_result(
     col4.metric(
         "원화 환산가격",
         (
-            f"₩ {price_krw:,.0f}"
+            format_currency(price_krw)
             if price_krw is not None
             else "환율 조회 실패"
         ),
@@ -467,7 +467,7 @@ def _render_asset_autofill(
         clicked = st.button(
             "종목정보 조회",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             key=(
                 f"add_lookup_button_"
                 f"{asset_type}"
@@ -527,6 +527,7 @@ def _render_asset_autofill(
 
 def render_add_asset_tab(
     exchange_rates: dict[str, float],
+    account_id: int | None = None,
 ) -> None:
     """새 자산 등록 화면을 표시합니다."""
 
@@ -567,8 +568,7 @@ def render_add_asset_tab(
         if rate is not None:
 
             st.caption(
-                f"1 {currency} = "
-                f"₩ {rate:,.2f}"
+                f"1 {currency} = {format_currency(rate)}"
             )
 
         else:
@@ -708,11 +708,8 @@ def render_add_asset_tab(
                 ):
 
                     st.info(
-                        "예상 매입금액: "
-                        f"₩ {purchase_krw:,.0f}"
-                        "\n\n"
-                        "예상 평가금액: "
-                        f"₩ {value_krw:,.0f}"
+                        f"예상 매입금액: {format_currency(purchase_krw)}\n\n"
+                        f"예상 평가금액: {format_currency(value_krw)}"
                     )
 
                 memo = st.text_area(
@@ -758,8 +755,7 @@ def render_add_asset_tab(
                 if balance_krw is not None:
 
                     st.success(
-                        "원화 환산금액: "
-                        f"₩ {balance_krw:,.0f}"
+                        f"원화 환산금액: {format_currency(balance_krw)}"
                     )
 
                 quantity = 1.0
@@ -816,7 +812,7 @@ def render_add_asset_tab(
 
                 st.info(
                     "부채 차감 후 추정 순가치: "
-                    f"₩ {market_price - loan_amount:,.0f}"
+                    f"{format_currency(market_price - loan_amount)}"
                 )
 
                 note = st.text_area(
@@ -882,7 +878,7 @@ def render_add_asset_tab(
         submitted = st.form_submit_button(
             "자산 저장",
             type="primary",
-            use_container_width=True,
+            width="stretch",
         )
 
         if submitted:
@@ -934,6 +930,7 @@ def render_add_asset_tab(
                     currency,
                     memo.strip(),
                     metadata=metadata,
+                    account_id=account_id,
                 )
 
                 saved_name = name.strip()

@@ -10,7 +10,6 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.pdfgen import canvas
 
-
 PAGE_WIDTH, PAGE_HEIGHT = A4
 FONT_REGULAR = "HYGothic-Medium"
 FONT_BOLD = "HYGothic-Medium"
@@ -49,7 +48,7 @@ def _format_krw(value: Any) -> str:
 def _format_rate(value: Any) -> str:
     if value is None:
         return "정보 없음"
-    return f"{_number(value) * 100:+.2f}%"
+    return f"{_number(value) * 100:+.1f}%"
 
 
 def _truncate(text: Any, limit: int) -> str:
@@ -270,7 +269,7 @@ def build_portfolio_pdf(result: dict[str, Any]) -> bytes:
     c.drawString(margin, PAGE_HEIGHT - 48, "포트폴리오 한눈 요약")
 
     mode = "부동산 제외" if result.get("exclude_real_estate") else "전체 자산"
-    generated = datetime.now().strftime("%Y-%m-%d %H:%M")
+    generated = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M")
     c.setFillColor(HexColor("#64748B"))
     c.setFont(FONT_REGULAR, 7.2)
     c.drawRightString(PAGE_WIDTH - margin, PAGE_HEIGHT - 25, f"분석 기준: {mode}")
@@ -354,7 +353,7 @@ def build_portfolio_pdf(result: dict[str, Any]) -> bytes:
     c.setFillColor(HexColor("#0F172A"))
     c.setFont(FONT_BOLD, 9.5)
     c.drawString(warning_x + 13, summary_y + summary_height - 19, "주요 점검사항")
-    cursor = _draw_bullets(
+    _draw_bullets(
         c,
         warning_x + 13,
         summary_y + summary_height - 39,
@@ -398,4 +397,5 @@ def build_portfolio_pdf(result: dict[str, Any]) -> bytes:
 
 def build_portfolio_pdf_filename(result: dict[str, Any]) -> str:
     mode = "financial" if result.get("exclude_real_estate") else "all_assets"
-    return f"AssetOS_Portfolio_{mode}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    generated = datetime.now().astimezone().strftime("%Y%m%d")
+    return f"AssetOS_Portfolio_{mode}_{generated}.pdf"

@@ -59,7 +59,7 @@ def render_metric_grid(metrics: list[dict[str, str]]) -> None:
 
 
 def render_ai_card(title: str, text: str) -> None:
-    """Render a shared placeholder card for future AI-generated guidance."""
+    """Render a shared insight card with safely escaped content."""
     st.markdown(
         '<div class="assetos-card">'
         f'<div class="assetos-section-title">{html.escape(title)}</div>'

@@ -3,7 +3,7 @@ from __future__ import annotations
 import streamlit as st
 
 
-COLORS = {
+LIGHT_COLORS = {
     "background": "#F4F7FB",
     "surface": "#FFFFFF",
     "surface_alt": "#F8FAFC",
@@ -15,6 +15,22 @@ COLORS = {
     "danger": "#DC2626",
     "warning": "#D97706",
 }
+
+DARK_COLORS = {
+    "background": "#0B1220",
+    "surface": "#111827",
+    "surface_alt": "#172033",
+    "border": "#2B364A",
+    "text": "#F8FAFC",
+    "muted": "#A7B2C3",
+    "primary": "#60A5FA",
+    "success": "#4ADE80",
+    "danger": "#FB7185",
+    "warning": "#FBBF24",
+}
+
+# Backward-compatible token name.
+COLORS = LIGHT_COLORS
 
 ASSET_COLORS = {
     "부동산": "#8B5E3C",
@@ -32,19 +48,40 @@ ASSET_COLORS = {
 def apply_theme() -> None:
     """Apply a lightweight, shared AssetOS visual theme."""
 
+    selected_theme = str(st.session_state.get("assetos_theme") or "System")
+    colors = DARK_COLORS if selected_theme == "Dark" else LIGHT_COLORS
+    system_dark_css = ""
+    if selected_theme == "System":
+        system_dark_css = f"""
+        @media (prefers-color-scheme: dark) {{
+            :root {{
+                --assetos-bg: {DARK_COLORS['background']};
+                --assetos-surface: {DARK_COLORS['surface']};
+                --assetos-border: {DARK_COLORS['border']};
+                --assetos-text: {DARK_COLORS['text']};
+                --assetos-muted: {DARK_COLORS['muted']};
+                --assetos-primary: {DARK_COLORS['primary']};
+                --assetos-success: {DARK_COLORS['success']};
+                --assetos-danger: {DARK_COLORS['danger']};
+            }}
+        }}
+        """
+
     st.markdown(
         f"""
         <style>
         :root {{
-            --assetos-bg: {COLORS['background']};
-            --assetos-surface: {COLORS['surface']};
-            --assetos-border: {COLORS['border']};
-            --assetos-text: {COLORS['text']};
-            --assetos-muted: {COLORS['muted']};
-            --assetos-primary: {COLORS['primary']};
-            --assetos-success: {COLORS['success']};
-            --assetos-danger: {COLORS['danger']};
+            --assetos-bg: {colors['background']};
+            --assetos-surface: {colors['surface']};
+            --assetos-border: {colors['border']};
+            --assetos-text: {colors['text']};
+            --assetos-muted: {colors['muted']};
+            --assetos-primary: {colors['primary']};
+            --assetos-success: {colors['success']};
+            --assetos-danger: {colors['danger']};
         }}
+
+        {system_dark_css}
 
         .stApp {{
             background: var(--assetos-bg);
@@ -59,6 +96,10 @@ def apply_theme() -> None:
         h1, h2, h3 {{
             color: var(--assetos-text);
             letter-spacing: -0.025em;
+        }}
+
+        .stApp, .stApp p, .stApp label {{
+            color: var(--assetos-text);
         }}
 
         .assetos-page-header {{
@@ -179,6 +220,7 @@ def apply_theme() -> None:
 
         [data-testid="stSidebar"] {{
             border-right: 1px solid var(--assetos-border);
+            background: var(--assetos-surface);
         }}
 
         hr {{
@@ -211,4 +253,12 @@ def apply_theme() -> None:
         </style>
         """,
         unsafe_allow_html=True,
+    )
+
+
+def theme_text_color() -> str:
+    return (
+        DARK_COLORS["text"]
+        if st.session_state.get("assetos_theme") == "Dark"
+        else LIGHT_COLORS["text"]
     )

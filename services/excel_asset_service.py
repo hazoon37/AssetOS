@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
+import re
 from typing import Any, BinaryIO
 
 import pandas as pd
@@ -13,14 +13,17 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
 from components.asset_management.constants import ASSET_TYPES, SUPPORTED_CURRENCIES
-from database.db import DB_PATH, get_assets, replace_all_assets
+from repositories import get_asset_repository
+from repositories.asset_repository import AssetRepository
+from services.import_detector import ImportFileType, detect_import_file
+from services.import_mapping import map_import_columns
 
 SHEET_NAME = "Assets"
 REQUIRED_COLUMNS = {
     "자산명",
     "수량",
 }
-TEMPLATE_COLUMNS = ["자산종류", "자산명", "수량", "평균단가", "현재가", "통화"]
+TEMPLATE_COLUMNS = ["자산종류", "자산명", "Ticker", "수량", "평균단가", "현재가", "통화"]
 
 COLUMN_MAP = {
     "ID": "id",
@@ -52,6 +55,8 @@ GUIDE_SHEET_NAME = "📖 작성가이드"
 
 TRUE_VALUES = {"true", "1", "yes", "y", "예", "네", "o"}
 FALSE_VALUES = {"false", "0", "no", "n", "아니오", "아니요", "x", ""}
+MAX_IMPORT_FILE_BYTES = 10 * 1024 * 1024
+MAX_IMPORT_ROWS = 10_000
 
 
 @dataclass(frozen=True)
@@ -61,6 +66,11 @@ class ExcelValidationResult:
     preview: pd.DataFrame
     errors: list[str]
     warnings: list[str]
+    file_type: ImportFileType | None = None
+    mapped_columns: dict[str, str] = field(default_factory=dict)
+    source_dataframe: pd.DataFrame = field(
+        default_factory=pd.DataFrame, repr=False, compare=False
+    )
 
 
 def _clean_text(value: Any) -> str:
@@ -91,9 +101,9 @@ def _to_bool(value: Any) -> bool:
     return False
 
 
-def read_asset_excel(file: BinaryIO | bytes) -> pd.DataFrame:
+def read_asset_excel(file: BinaryIO | bytes, sheet_name: str = SHEET_NAME) -> pd.DataFrame:
     source = BytesIO(file) if isinstance(file, bytes) else file
-    return pd.read_excel(source, sheet_name=SHEET_NAME, engine="openpyxl")
+    return pd.read_excel(source, sheet_name=sheet_name, engine="openpyxl")
 
 
 def _dataframe_to_excel(dataframe: pd.DataFrame) -> bytes:
@@ -109,6 +119,7 @@ def build_asset_template_excel() -> bytes:
     example = {
         "자산종류": "미국주식",
         "자산명": "Apple",
+        "Ticker": "AAPL",
         "수량": 2,
         "평균단가": 180,
         "현재가": 210,
@@ -177,11 +188,12 @@ def build_asset_template_excel() -> bytes:
             ("AssetOS Excel 작성가이드", ""),
             ("사용 방법", "Assets 시트의 회색 예시 행을 삭제한 뒤 자산을 한 행씩 입력하세요."),
             ("필수 항목 (*)", "자산명 *, 수량 *"),
+            ("티커 (선택)", "비워 두면 자산명으로 자동 조회합니다. 입력하면 티커를 먼저 검증하고 사용합니다."),
             ("자동 조회", "자산종류, 티커, 현재가, 통화, 거래소, 국가는 업로드 후 가능한 경우 자동으로 조회합니다."),
             ("선택 입력", "평균단가는 선택 사항입니다. 입력하면 평가손익과 수익률을 계산할 수 있습니다."),
             ("업로드 과정", "Asset Manager에서 파일 선택 → 미리보기 및 오류 확인 → 동의 → Apply Changes"),
             ("주의", "열 이름과 Assets 시트 이름을 변경하지 마세요. 적용 전 현재 DB가 자동 백업됩니다."),
-            ("간단한 예", "미국주식 | Apple | 2 | 180 | 210 | USD"),
+            ("간단한 예", "미국주식 | Apple | AAPL | 2 | 180 | 210 | USD"),
         ]
         for row in guide_rows:
             guide.append(row)
@@ -200,9 +212,12 @@ def build_asset_template_excel() -> bytes:
     return output.getvalue()
 
 
-def export_assets_excel(assets: pd.DataFrame | None = None) -> bytes:
+def export_assets_excel(
+    assets: pd.DataFrame | None = None,
+    repository: AssetRepository | None = None,
+) -> bytes:
     """Export the current assets table using the standard import column names."""
-    source = get_assets() if assets is None else assets
+    source = (repository or get_asset_repository()).get_assets() if assets is None else assets
     exported = pd.DataFrame()
     for excel_column, database_column in COLUMN_MAP.items():
         exported[excel_column] = (
@@ -218,15 +233,22 @@ def validate_asset_excel(file: BinaryIO | bytes) -> ExcelValidationResult:
     warnings: list[str] = []
 
     try:
-        dataframe = read_asset_excel(file)
-    except ValueError as exc:
-        return ExcelValidationResult(
-            success=False,
-            rows=[],
-            preview=pd.DataFrame(),
-            errors=[f"'{SHEET_NAME}' 시트를 찾지 못했습니다: {exc}"],
-            warnings=[],
-        )
+        if isinstance(file, bytes):
+            file_bytes = file
+        else:
+            file.seek(0)
+            file_bytes = file.read()
+            file.seek(0)
+        if len(file_bytes) > MAX_IMPORT_FILE_BYTES:
+            raise ValueError("Excel 파일은 10MB 이하여야 합니다.")
+        detection = detect_import_file(file_bytes)
+        dataframe = read_asset_excel(file_bytes, detection.sheet_name)
+        source_dataframe = dataframe.copy()
+        if len(dataframe) > MAX_IMPORT_ROWS:
+            raise ValueError(f"한 번에 최대 {MAX_IMPORT_ROWS:,}행까지 가져올 수 있습니다.")
+        mapping = map_import_columns(dataframe)
+        dataframe = mapping.dataframe
+        warnings.extend(mapping.warnings)
     except Exception as exc:
         return ExcelValidationResult(
             success=False,
@@ -239,12 +261,19 @@ def validate_asset_excel(file: BinaryIO | bytes) -> ExcelValidationResult:
     dataframe.columns = [str(column).strip() for column in dataframe.columns]
     missing = sorted(REQUIRED_COLUMNS - set(dataframe.columns))
     if missing:
+        missing_preview = dataframe.head(20).copy()
+        missing_preview.insert(
+            0, "Row Number", [int(index) + 2 for index in missing_preview.index]
+        )
         return ExcelValidationResult(
             success=False,
             rows=[],
-            preview=dataframe.head(20),
+            preview=missing_preview,
             errors=["필수 열이 없습니다: " + ", ".join(missing)],
-            warnings=[],
+            warnings=warnings,
+            file_type=detection.file_type,
+            mapped_columns=mapping.mappings,
+            source_dataframe=source_dataframe,
         )
 
     # Completely empty rows are ignored.
@@ -289,6 +318,7 @@ def validate_asset_excel(file: BinaryIO | bytes) -> ExcelValidationResult:
         currency = _clean_text(excel_row.get("통화")).upper()
 
         row = {
+            "_excel_row_number": row_number,
             "asset_type": asset_type,
             "asset_name": asset_name,
             "symbol": _clean_text(excel_row.get("티커")).upper(),
@@ -316,6 +346,19 @@ def validate_asset_excel(file: BinaryIO | bytes) -> ExcelValidationResult:
         }
         rows.append(row)
 
+    duplicate_keys: dict[tuple[str, str], list[str]] = {}
+    for row in rows:
+        symbol = str(row.get("symbol") or "").strip().upper()
+        exchange = str(row.get("exchange") or "").strip().upper()
+        if symbol:
+            duplicate_keys.setdefault((symbol, exchange), []).append(str(row["asset_name"]))
+    for (symbol, exchange), names in duplicate_keys.items():
+        if len(names) > 1:
+            market = f"/{exchange}" if exchange else ""
+            warnings.append(
+                f"동일 종목 {symbol}{market}이 {len(names):,}개 행에 있습니다. 자동 합산하지 않습니다."
+            )
+
     if not rows and not errors:
         errors.append("가져올 자산 행이 없습니다.")
 
@@ -325,6 +368,7 @@ def validate_asset_excel(file: BinaryIO | bytes) -> ExcelValidationResult:
         if column in dataframe.columns
     ]
     preview = dataframe[preview_columns].head(30).copy()
+    preview.insert(0, "Row Number", [int(index) + 2 for index in preview.index])
 
     return ExcelValidationResult(
         success=not errors,
@@ -332,21 +376,47 @@ def validate_asset_excel(file: BinaryIO | bytes) -> ExcelValidationResult:
         preview=preview,
         errors=errors,
         warnings=warnings,
+        file_type=detection.file_type,
+        mapped_columns=mapping.mappings,
+        source_dataframe=source_dataframe,
     )
 
 
-def backup_database() -> Path | None:
-    if not DB_PATH.exists():
-        return None
-    backup_dir = DB_PATH.parent / "backups"
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_path = backup_dir / f"assets_before_excel_{timestamp}.db"
-    backup_path.write_bytes(DB_PATH.read_bytes())
-    return backup_path
+def backup_database(repository: AssetRepository | None = None) -> Path | None:
+    return (repository or get_asset_repository()).backup()
 
 
-def import_asset_excel(file: BinaryIO | bytes) -> dict[str, Any]:
+def build_validation_error_report(result: ExcelValidationResult) -> bytes:
+    """Export validation failures while preserving the uploaded columns."""
+    report = result.source_dataframe.copy()
+    messages_by_row: dict[int, list[str]] = {}
+    global_messages: list[str] = []
+    for message in result.errors:
+        match = re.match(r"^(\d+)행", message)
+        if match:
+            messages_by_row.setdefault(int(match.group(1)), []).append(message)
+        else:
+            global_messages.append(message)
+    report["Status"] = "🔴 Fail"
+    messages = [
+        " · ".join(messages_by_row.get(int(index) + 2, global_messages))
+        for index in report.index
+    ]
+    report["Suggested Action"] = [
+        f"Fix and upload again: {message}" if message else "Fix and upload again"
+        for message in messages
+    ]
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        report.to_excel(writer, sheet_name=SHEET_NAME, index=False)
+    return output.getvalue()
+
+
+def import_asset_excel(
+    file: BinaryIO | bytes,
+    repository: AssetRepository | None = None,
+    account_id: int | None = None,
+) -> dict[str, Any]:
     validation = validate_asset_excel(file)
     if not validation.success:
         return {
@@ -357,8 +427,12 @@ def import_asset_excel(file: BinaryIO | bytes) -> dict[str, Any]:
             "warnings": validation.warnings,
         }
 
-    backup_path = backup_database()
-    replace_all_assets(validation.rows)
+    target = repository or get_asset_repository()
+    backup_path = target.backup()
+    if account_id is None:
+        target.replace_all_assets(validation.rows)
+    else:
+        target.replace_all_assets(validation.rows, account_id=account_id)
 
     return {
         "success": True,
@@ -369,7 +443,12 @@ def import_asset_excel(file: BinaryIO | bytes) -> dict[str, Any]:
     }
 
 
-def import_asset_rows(rows: list[dict[str, Any]], warnings: list[str] | None = None) -> dict[str, Any]:
+def import_asset_rows(
+    rows: list[dict[str, Any]],
+    warnings: list[str] | None = None,
+    repository: AssetRepository | None = None,
+    account_id: int | None = None,
+) -> dict[str, Any]:
     """Apply already validated and resolved Smart Import rows atomically."""
     if not rows:
         return {
@@ -379,8 +458,12 @@ def import_asset_rows(rows: list[dict[str, Any]], warnings: list[str] | None = N
             "errors": ["반영할 자산이 없습니다."],
             "warnings": warnings or [],
         }
-    backup_path = backup_database()
-    replace_all_assets(rows)
+    target = repository or get_asset_repository()
+    backup_path = target.backup()
+    if account_id is None:
+        target.replace_all_assets(rows)
+    else:
+        target.replace_all_assets(rows, account_id=account_id)
     return {
         "success": True,
         "imported_count": len(rows),

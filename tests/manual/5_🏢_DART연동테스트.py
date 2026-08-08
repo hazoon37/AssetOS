@@ -144,7 +144,7 @@ with st.expander(
 
     if st.button(
         "DART 고유번호 목록 새로고침",
-        use_container_width=True,
+        width="stretch",
     ):
 
         download_corporation_codes.clear()
@@ -178,7 +178,7 @@ with input_column2:
     lookup_clicked = st.button(
         "DART 정보 조회",
         type="primary",
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -622,7 +622,7 @@ if result:
                         accounts_df[
                             available_columns
                         ],
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
 

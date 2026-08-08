@@ -63,8 +63,8 @@ def render_inline_edit_form(row: pd.Series) -> None:
             )
 
         save_col, cancel_col = st.columns(2)
-        save_clicked = save_col.form_submit_button("수정 내용 저장", type="primary", use_container_width=True)
-        cancel_clicked = cancel_col.form_submit_button("취소", use_container_width=True)
+        save_clicked = save_col.form_submit_button("수정 내용 저장", type="primary", width="stretch")
+        cancel_clicked = cancel_col.form_submit_button("취소", width="stretch")
 
         if cancel_clicked:
             clear_action_state()

@@ -8,6 +8,7 @@ import requests
 import streamlit as st
 import yfinance as yf
 
+from services.asset_resolver import enrich_asset_with_resolver, resolve_asset
 from services.market_price_service import (
     COIN_ID_MAP,
     get_market_price,
@@ -1293,25 +1294,35 @@ def get_asset_metadata(
 ) -> dict[str, Any]:
     """선택한 자산 종류에 맞는 메타데이터 조회 함수를 실행합니다."""
 
+    resolution = resolve_asset(symbol, asset_type=asset_type)
+    if resolution.success and resolution.asset is not None:
+        symbol = resolution.asset.ticker
+        asset_type = resolution.asset.asset_type or asset_type
+        currency = resolution.asset.currency or currency
+
     if asset_type not in SUPPORTED_ASSET_TYPES:
 
-        return empty_result(
+        return enrich_asset_with_resolver(empty_result(
             message=(
                 "현재 자동조회가 지원되지 않는 "
                 "자산 종류입니다."
             ),
             asset_type=asset_type,
             symbol=symbol,
-        )
+        ))
 
     if asset_type == "코인":
 
-        return get_crypto_metadata(
+        result = get_crypto_metadata(
             symbol=symbol,
             currency=currency,
         )
-
-    return get_stock_or_etf_metadata(
-        asset_type=asset_type,
-        symbol=symbol,
-    )
+    else:
+        result = get_stock_or_etf_metadata(
+            asset_type=asset_type,
+            symbol=symbol,
+        )
+    result = dict(result)
+    result.setdefault("symbol", symbol)
+    result.setdefault("asset_type", asset_type)
+    return enrich_asset_with_resolver(result)

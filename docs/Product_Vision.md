@@ -7,6 +7,15 @@ AssetOS의 첫 화면은 대시보드다. 사용자는 앱을 열자마자 총�
 
 대시보드는 의사결정에 필요한 핵심 정보부터 보여준다. 데이터가 없거나 계산할
 수 없는 값은 `0`으로 추정하지 않고 `정보 없음` 또는 `계산 불가`로 표시한다.
+상단 AI Summary는 현재 사용자와 계정 필터의 구조화 데이터만 설명한다.
+
+## Quick Analysis
+
+`📄 Quick Analysis`는 Excel Upload → Smart Import → Portfolio Analysis →
+AI Advisor → PDF·PNG·JSON Export 흐름을 한 번에 제공한다. 업로드 원본,
+보강 자산, 분석과 export bytes는 현재 Streamlit `session_state`에만 존재한다.
+`Analyze Only`는 Repository를 변경하지 않는다. `Save into AssetOS`는 분석 결과를
+확인하고 대상 계정과 전체 교체를 별도로 확인한 경우에만 기존 저장형 Import를 호출한다.
 
 ## 3-page philosophy
 
@@ -22,9 +31,39 @@ AssetOS의 첫 화면은 대시보드다. 사용자는 앱을 열자마자 총�
 사용자는 `➕ 자산관리`를 통해 템플릿 다운로드, 내보내기와 가져오기에
 빠르게 접근한다.
 
-대시보드의 자산관리는 빠른 진입점이며, 포트폴리오의 보유자산 탭은 상세
-등록·수정·삭제와 검토를 담당한다. 두 진입점은 같은 서비스와 컴포넌트를
+대시보드의 자산관리 dialog는 등록·수정·삭제, 계정 필터, 검색, 일괄 삭제와
+가져오기·내보내기를 제공한다. 포트폴리오의 보유자산 탭은 같은 상세 작업을
+페이지 맥락에서 제공한다. 두 진입점은 같은 서비스와 컴포넌트를
 사용하며 서로 다른 저장 로직을 만들지 않는다.
+
+## Accounts and user scope
+
+모든 자산은 한 투자계정에 속한다. 계정을 지정하지 않은 신규 입력은 현재 로컬
+사용자의 `My Portfolio`에 안전하게 연결한다. 기존 `default_user` 데이터는 Local
+User 마이그레이션에서만 사용한다. 대시보드는 전체 계정 또는
+하나의 계정을 조회할 수 있고, Smart Import는 선택한 계정만 교체한다.
+
+첫 방문에는 브라우저에서 UUID를 생성해 `localStorage`에 보존하고
+`local:<uuid>`를 사용자 컨텍스트로 사용한다. 로그인 UI와 인증 절차는 없다.
+기존 `default_user` 데이터는 최초 로컬 사용자에게 원자적으로 이전된다.
+향후 로그인 연결은 Repository의 사용자 범위 이전 계약으로 이 UUID의 계정,
+자산, 스냅샷과 환경설정을 인증 사용자에게 이전해야 한다.
+
+## AI Advisor
+
+대시보드의 AI Portfolio Summary는 구조화된 포트폴리오 데이터에서 분산,
+집중도, 통화·섹터 위험, 계정 구성과 투자 요약을 생성한다. provider 계약과
+개인정보 경계는 [`AI_ADVISOR.md`](AI_ADVISOR.md)를 따른다.
+
+## Preferences and recovery
+
+사용자는 기준통화와 System·Light·Dark 테마를 저장할 수 있다. 기준통화는
+대시보드 표시금액에 적용하며 원천 자산의 거래통화나 저장값을 변경하지 않는다.
+
+전체 SQLite 백업은 다운로드할 수 있고, 복구는 파일 무결성과 AssetOS 자산
+테이블을 확인한 뒤 현재 DB를 안전 백업하고 원자적으로 실행한다.
+자산 이동성을 위해 선택 범위는 Excel과 버전이 명시된 JSON으로 내보낼 수 있다.
+Dashboard의 현재 필터 범위는 PDF·PNG·JSON으로 직접 내려받을 수 있다.
 
 ## Smart Import
 

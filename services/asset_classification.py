@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from services.asset_resolver import resolve_asset
+
 
 LEVERAGE_MAP: dict[str, float] = {
     "TQQQ": 3.0, "SQQQ": -3.0, "SOXL": 3.0, "SOXS": -3.0,
@@ -117,16 +119,24 @@ def classify_asset(
     industry: str = "",
 ) -> dict[str, Any]:
     ticker = _text(symbol).upper()
-    asset_class = infer_asset_class(asset_type, ticker)
+    resolution = resolve_asset(
+        ticker, asset_type=asset_type, include_external=False
+    )
+    master = resolution.asset if resolution.success else None
+    effective_asset_type = _text(asset_type) or (master.asset_type if master else "")
+    effective_exchange = _text(exchange) or (master.exchange if master else "")
+    effective_sector = _text(sector) or (master.sector if master else "")
+    effective_industry = _text(industry) or (master.industry if master else "")
+    asset_class = infer_asset_class(effective_asset_type, ticker)
     leverage_multiple = LEVERAGE_MAP.get(ticker, 1.0)
     is_inverse = leverage_multiple < 0
-    is_leverage = abs(leverage_multiple) > 1.0 or is_inverse
+    is_leverage = abs(leverage_multiple) > 1.0 or is_inverse or bool(master and master.is_leveraged)
     is_cash = asset_class == "CASH" or ticker in CASH_EQUIVALENT_TICKERS
     if ticker in CASH_EQUIVALENT_TICKERS and asset_class in {"ETF", "BOND"}:
         # 초단기채 ETF는 자산군은 채권으로 유지하되 현금성 플래그를 부여합니다.
         is_cash = True
-    country = infer_country(asset_type, currency, exchange)
-    normalized_sector = infer_sector(ticker, asset_class, sector, industry)
+    country = master.country if master else infer_country(effective_asset_type, currency, effective_exchange)
+    normalized_sector = infer_sector(ticker, asset_class, effective_sector, effective_industry)
     tags: list[str] = []
     if ticker in SEMICONDUCTOR_TICKERS:
         tags += ["AI", "Semiconductor"]
@@ -140,16 +150,20 @@ def classify_asset(
         tags.append("Inverse")
     if is_cash:
         tags.append("Cash Equivalent")
+    if master:
+        tags.extend(theme.strip() for theme in master.theme.split("|") if theme.strip())
+        if master.is_dividend:
+            tags.append("Dividend")
     return {
         "asset_class": asset_class,
         "country": country,
-        "exchange": _text(exchange),
+        "exchange": effective_exchange,
         "sector": normalized_sector,
-        "industry": _text(industry),
+        "industry": effective_industry,
         "is_cash": int(is_cash),
         "is_leverage": int(is_leverage),
         "is_inverse": int(is_inverse),
         "leverage_multiple": float(leverage_multiple),
-        "data_source": "AssetOS Classification",
+        "data_source": master.provider if master else "AssetOS Classification",
         "tags": ",".join(dict.fromkeys(tags)),
     }

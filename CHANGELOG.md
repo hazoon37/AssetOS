@@ -7,6 +7,44 @@
 
 # Changelog
 
+## AssetOS Feature Pack #1
+
+- 세션 전용 Excel Quick Analysis와 PDF·PNG·JSON export 추가
+- 브라우저 localStorage UUID 기반 Local User Mode 추가
+- `default_user` 자산·계정·스냅샷·환경설정의 원자적 사용자 이전 추가
+- Portfolio AI provider 출력 계약과 Rule Engine 확장
+- Dashboard 최상단 AI Summary 배치
+- Dashboard PDF·PNG·JSON 직접 export 추가
+- Quick Analysis에 `Analyze Only`와 확인 기반 `Save into AssetOS` 분기 추가
+
+## Sprint 5 — AI Portfolio Advisor MVP
+
+- 총자산 상단에 `🤖 AI 포트폴리오 진단` 실행 버튼 추가
+- Portfolio·분산·위험 점수와 7개 자산 배분 비율 계산
+- 구조화 데이터 기반 장점·리스크·추천사항 Rule Engine 추가
+- 기존 반응형 AssetOS 카드 스타일을 재사용한 진단 컴포넌트 추가
+
+## AssetOS v1.0 RC — SaaS Foundation
+
+- `assets.user_id` 무손실 마이그레이션과 사용자·계정 일치 trigger 추가
+- 사용자별 Portfolio Snapshot Repository 추가
+- local/default_user 인증 provider와 Google·Apple·GitHub 확장 계약 추가
+- 사용자 ID를 포함하는 포트폴리오 캐시 및 계정별 분석 추가
+- 구조화 데이터 기반 AI Advisor provider와 Dashboard AI Portfolio Summary 추가
+
+## AssetOS v1.0 MVP
+
+- Smart Import: 템플릿·일반 Excel 감지, 열 매핑, Resolver, 계정 선택, 편집·재검증 미리보기
+- Asset Master 기반 로컬 우선 메타데이터 및 외부 provider fallback
+- Repository Pattern, `default_user`, 투자계정과 자동 구버전 DB 마이그레이션
+- 통합 자산관리의 등록·수정·삭제·검색·일괄 삭제와 Excel/JSON 내보내기
+- 계정별 대시보드 필터, 다차원 배분과 4/2/1 반응형 KPI
+- 사용자 기준통화 및 System·Light·Dark 테마 저장
+- SQLite 무결성 검증 기반 전체 백업·원자적 복구
+- 업로드 제한, Resolver 캐시, 일회성 Repository 초기화 성능 개선
+- Streamlit Cloud 설정, 비밀정보 예제와 배포 문서 정리
+- AI placeholder를 실제 규칙 기반 Summary/Insight로 교체
+
 ## v0.9 Portfolio Foundation
 
 - SQLite 자동 마이그레이션과 자산 메타데이터 컬럼 추가
@@ -68,3 +106,27 @@
 - 다운로드 전 PDF 미리보기 추가
 - PDF를 A4 가로형에서 A4 세로형 1페이지로 변경
 - 미리보기와 PDF가 동일한 분석 결과 객체를 사용하도록 개선
+
+--------------------------------
+
+## v0.2.6
+
+### Added
+
+- Google Login
+- Guest Mode
+- User Session
+
+### Changed
+
+- Repository supports user_id
+
+### Fixed
+
+- No breaking changes
+
+### Known Issues
+
+- Firestore not enabled yet
+
+--------------------------------

@@ -10,14 +10,14 @@ from ui.common.formatters import (
     format_krw,
     format_large_currency,
     format_multiple,
+    format_percent,
 )
 
 
 def _format_signed_krw(value: float | None) -> str:
     if value is None:
         return "정보 없음"
-    sign = "+" if value > 0 else ""
-    return f"{sign}₩ {value:,.0f}"
+    return format_krw(value)
 
 
 def _allocation_df(rows: list[dict[str, Any]]) -> pd.DataFrame:
@@ -69,12 +69,12 @@ def render_allocation_section(title: str, rows: list[dict[str, Any]], caption: s
     left, right = st.columns([1, 1.7])
     with left:
         display = df.copy()
-        display["평가금액"] = display["평가금액"].map(lambda v: f"₩ {v:,.0f}")
-        display["비중(%)"] = display["비중(%)"].map(lambda v: f"{v:,.2f}%")
-        st.dataframe(display, use_container_width=True, hide_index=True)
+        display["평가금액"] = display["평가금액"].map(format_krw)
+        display["비중(%)"] = display["비중(%)"].map(format_percent)
+        st.dataframe(display, width="stretch", hide_index=True)
     with right:
         chart = df.set_index("구분")[["비중(%)"]]
-        st.bar_chart(chart, use_container_width=True)
+        st.bar_chart(chart, width="stretch")
     if caption:
         st.caption(caption)
 
@@ -109,13 +109,13 @@ def render_asset_allocation(assets: list[dict[str, Any]]) -> None:
         return
     df = build_asset_dataframe(assets)
     display = df.copy()
-    display["평가금액"] = display["평가금액"].map(lambda v: f"₩ {v:,.0f}")
-    display["평가손익"] = display["평가손익"].map(lambda v: f"{v:+,.0f}원")
+    display["평가금액"] = display["평가금액"].map(format_krw)
+    display["평가손익"] = display["평가손익"].map(format_krw)
     display["수익률"] = display["수익률"].map(
         lambda v: format_decimal_percentage(v) if v is not None else "계산 불가"
     )
     display["비중"] = display["비중"].map(format_decimal_percentage)
-    st.dataframe(display, use_container_width=True, hide_index=True)
+    st.dataframe(display, width="stretch", hide_index=True)
 
 
 def render_concentration(concentration: dict[str, Any]) -> None:
@@ -212,7 +212,7 @@ def render_portfolio_score(score: dict[str, Any]) -> None:
     with right:
         if rows:
             score_df = pd.DataFrame(rows).set_index("항목")
-            st.bar_chart(score_df, use_container_width=True, horizontal=True)
+            st.bar_chart(score_df, width="stretch", horizontal=True)
     st.caption("이 점수는 수익률 예측이 아니라 현재 포트폴리오 구조의 분산·유동성·레버리지 위험을 규칙 기반으로 진단한 값입니다.")
 
 
@@ -239,7 +239,7 @@ def render_stress_tests(rows: list[dict[str, Any]]) -> None:
             "충격 후 자산": format_large_currency(row.get("after_value_krw"), "KRW"),
             "가정": row.get("description"),
         })
-    st.dataframe(pd.DataFrame(display_rows), use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(display_rows), width="stretch", hide_index=True)
     st.caption("실제 예측값이 아닌 구조적 취약점 확인용 단순 시나리오입니다. 상관관계, 장중 재조정, 세금·수수료는 반영하지 않습니다.")
 
 
@@ -259,9 +259,9 @@ def render_investment_dna(rows: list[dict[str, Any]]) -> None:
     left, right = st.columns([1, 1.7])
     with left:
         display = dna_df.copy()
-        display["노출 비중(%)"] = display["노출 비중(%)"].map(lambda v: f"{v:,.2f}%")
-        display["평가금액"] = display["평가금액"].map(lambda v: f"₩ {v:,.0f}")
-        st.dataframe(display, use_container_width=True, hide_index=True)
+        display["노출 비중(%)"] = display["노출 비중(%)"].map(format_percent)
+        display["평가금액"] = display["평가금액"].map(format_krw)
+        st.dataframe(display, width="stretch", hide_index=True)
     with right:
-        st.bar_chart(dna_df.set_index("테마")[["노출 비중(%)"]], use_container_width=True)
+        st.bar_chart(dna_df.set_index("테마")[["노출 비중(%)"]], width="stretch")
     st.caption("한 자산이 여러 테마에 동시에 포함될 수 있어 노출 비중 합계는 100%를 초과할 수 있습니다.")

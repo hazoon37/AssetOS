@@ -3,6 +3,7 @@ from __future__ import annotations
 import streamlit as st
 
 from services.exchange_rate_service import get_exchange_rates_to_krw
+from ui.common.formatters import format_currency
 
 
 def render_page_header() -> None:
@@ -22,9 +23,9 @@ def render_exchange_panel(exchange_data: dict) -> None:
         for column, code in zip(columns, currencies):
             with column:
                 rate = exchange_rates.get(code)
-                st.metric(f"1 {code}", f"₩ {rate:,.2f}" if rate is not None else "조회 실패")
+                st.metric(f"1 {code}", format_currency(rate) if rate is not None else "조회 실패")
         if not exchange_data["success"]:
             st.warning(exchange_data["message"])
-        if st.button("환율 새로고침", use_container_width=True):
+        if st.button("환율 새로고침", width="stretch"):
             get_exchange_rates_to_krw.clear()
             st.rerun()

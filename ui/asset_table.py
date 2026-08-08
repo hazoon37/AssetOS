@@ -4,10 +4,15 @@ import pandas as pd
 import streamlit as st
 
 from components.asset_management.calculations import calculate_assets, calculate_summary
-from components.asset_management.helpers import format_currency_value, format_quantity_value
+from components.asset_management.controller import remove_assets
+from components.asset_management.helpers import (
+    format_currency_value,
+    format_quantity_value,
+)
 from components.asset_management.state import open_delete, open_edit
 from ui.asset_cards import render_portfolio_summary
 from ui.asset_forms import render_inline_edit_form
+from ui.common.formatters import format_asset_type, format_currency, format_percent
 from ui.dialogs import render_inline_delete_confirm
 
 
@@ -20,7 +25,12 @@ def _filter_assets(df: pd.DataFrame) -> pd.DataFrame:
         ).strip().lower()
     with filter_col2:
         types = ["전체"] + sorted(df["asset_type"].dropna().astype(str).unique().tolist())
-        selected_type = st.selectbox("자산 종류 필터", types, key="asset_list_type_filter")
+        selected_type = st.selectbox(
+            "자산 종류 필터",
+            types,
+            format_func=format_asset_type,
+            key="asset_list_type_filter",
+        )
 
     filtered = df.copy()
     if search_text:
@@ -58,17 +68,17 @@ def _render_action_rows(df: pd.DataFrame) -> None:
         columns[1].markdown(
             f"**{row['asset_name']}**" + (f"  \n`{symbol}`" if symbol else "")
         )
-        columns[2].write(str(row["asset_type"]))
+        columns[2].write(format_asset_type(row["asset_type"]))
         columns[3].write(format_quantity_value(float(row["quantity"]), str(row["asset_type"])))
         krw_value = row["원화 평가금액"]
         krw_profit = row["원화 평가손익"]
-        columns[4].write(f"₩ {float(krw_value):,.0f}" if pd.notna(krw_value) else "환율 오류")
-        columns[5].write(f"₩ {float(krw_profit):+,.0f}" if pd.notna(krw_profit) else "-")
+        columns[4].write(format_currency(krw_value) if pd.notna(krw_value) else "환율 오류")
+        columns[5].write(format_currency(krw_profit) if pd.notna(krw_profit) else "-")
 
-        if columns[6].button("수정", key=f"asset_row_edit_{asset_id}", use_container_width=True):
+        if columns[6].button("수정", key=f"asset_row_edit_{asset_id}", width="stretch"):
             open_edit(asset_id)
             st.rerun()
-        if columns[7].button("삭제", key=f"asset_row_delete_{asset_id}", use_container_width=True):
+        if columns[7].button("삭제", key=f"asset_row_delete_{asset_id}", width="stretch"):
             open_delete(asset_id)
             st.rerun()
 
@@ -88,19 +98,57 @@ def _render_detail_table(df: pd.DataFrame) -> None:
             "번호", "자산 종류", "자산명", "티커·구분", "수량", "평균단가",
             "현재가", "평가금액", "평가손익", "수익률", "통화", "원화 환산금액",
         ]
+        display["자산 종류"] = display["자산 종류"].map(format_asset_type)
         display["번호"] = display["번호"].astype(int)
         display["수량"] = display.apply(
             lambda row: format_quantity_value(float(row["수량"]), str(row["자산 종류"])), axis=1
         )
         for column in ["평균단가", "현재가", "평가금액", "평가손익"]:
             display[column] = display.apply(
-                lambda row: format_currency_value(float(row[column]), str(row["통화"])), axis=1
+                lambda row, column=column: format_currency_value(
+                    float(row[column]), str(row["통화"])
+                ),
+                axis=1,
             )
         display["원화 환산금액"] = display["원화 환산금액"].map(
-            lambda value: f"₩ {float(value):,.0f}" if pd.notna(value) else "환율 조회 실패"
+            lambda value: format_currency(value) if pd.notna(value) else "환율 조회 실패"
         )
-        display["수익률"] = display["수익률"].map(lambda value: f"{float(value):+,.2f}%")
-        st.dataframe(display, use_container_width=True, hide_index=True)
+        display["수익률"] = display["수익률"].map(
+            lambda value: format_percent(value, signed=True)
+        )
+        st.dataframe(display, width="stretch", hide_index=True)
+
+
+def _render_bulk_delete(df: pd.DataFrame) -> None:
+    """Render a deliberate, user-confirmed bulk deletion control."""
+    if df.empty:
+        return
+    labels = {
+        int(row["id"]): f"{row['asset_name']} · {row.get('symbol') or '티커 없음'}"
+        for _, row in df.iterrows()
+    }
+    with st.expander("여러 자산 삭제", expanded=False):
+        selected = st.multiselect(
+            "삭제할 자산",
+            options=list(labels),
+            format_func=lambda asset_id: labels[asset_id],
+            key="asset_bulk_delete_selection",
+        )
+        confirmed = st.checkbox(
+            f"선택한 {len(selected):,}개 자산을 삭제합니다.",
+            key="asset_bulk_delete_confirm",
+            disabled=not selected,
+        )
+        if st.button(
+            "선택 자산 삭제",
+            type="primary",
+            width="stretch",
+            disabled=not selected or not confirmed,
+            key="asset_bulk_delete_button",
+        ):
+            deleted = remove_assets([int(asset_id) for asset_id in selected])
+            st.success(f"{deleted:,}개 자산을 삭제했습니다.")
+            st.rerun()
 
 
 def render_asset_management_view(
@@ -119,6 +167,8 @@ def render_asset_management_view(
     if show_summary:
         render_portfolio_summary(calculate_summary(calculated), exchange_rate_date)
         st.divider()
-    _render_action_rows(_filter_assets(calculated))
-    _render_detail_table(calculated)
+    filtered = _filter_assets(calculated)
+    _render_action_rows(filtered)
+    _render_bulk_delete(filtered)
+    _render_detail_table(filtered)
     st.caption("번호는 화면 표시용입니다. 자산 삭제 후 남은 자산에 1번부터 자동으로 다시 부여됩니다.")

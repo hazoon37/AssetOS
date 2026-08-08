@@ -11,8 +11,11 @@ __pycache__/
 # Streamlit 비밀정보
 .streamlit/secrets.toml
 
-# 로컬 데이터베이스
-data/
+# 로컬 데이터베이스와 백업 (정적 data/*.csv는 배포에 포함)
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/backups/
 *.db
 *.sqlite
 *.sqlite3

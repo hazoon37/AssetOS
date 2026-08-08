@@ -125,6 +125,7 @@ def analyze_portfolio(assets: list[dict[str, Any]]) -> dict[str, Any]:
         "country": _group_by_value(valid, "country", COUNTRY_LABELS),
         "currency": _group_by_value(valid, "currency"),
         "sector": _group_by_value(valid, "sector"),
+        "account": _group_by_value(valid, "account_name"),
     }
     concentration = _concentration([asset["weight"] for asset in valid])
     score = build_portfolio_score(summary, concentration, allocations)

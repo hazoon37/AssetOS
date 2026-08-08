@@ -11,6 +11,7 @@ from services.asset_metadata_service import (
 from services.exchange_rate_service import (
     get_exchange_rates_to_krw,
 )
+from services.asset_resolver import AssetResolution, resolve_asset
 
 
 SUPPORTED_ASSET_TYPES = {
@@ -66,6 +67,7 @@ def validate_request(
             and len(symbol) == 6
         ):
             return (
+                "해당 키워드로는 검색이 불가합니다. "
                 "국내주식과 국내ETF는 "
                 "6자리 종목코드로 입력해 주세요."
             )
@@ -90,6 +92,11 @@ def make_failure_result(
         "valuation": None,
         "warnings": [],
     }
+
+
+def resolve_company_query(query: str) -> AssetResolution:
+    """Resolve every company-search input through the shared Asset Resolver."""
+    return resolve_asset(query)
 
 
 def build_warnings(
@@ -187,9 +194,35 @@ def analyze_company(
         asset_type or ""
     ).strip()
 
-    normalized_symbol = normalize_symbol(
-        symbol
-    )
+    resolution = resolve_company_query(symbol)
+    if resolution.status == "ambiguous":
+        result = make_failure_result(
+            message="여러 종목이 검색되었습니다. 분석할 종목을 선택해 주세요.",
+            asset_type=normalized_asset_type,
+            symbol=normalize_symbol(symbol),
+        )
+        result["resolution_status"] = "ambiguous"
+        result["candidates"] = [
+            {
+                "ticker": candidate.ticker,
+                "display_name": candidate.display_name,
+                "exchange": candidate.exchange,
+                "asset_type": candidate.asset_type,
+                "currency": candidate.currency,
+            }
+            for candidate in resolution.candidates
+        ]
+        return result
+
+    if resolution.success and resolution.asset is not None:
+        resolved = resolution.asset
+        normalized_asset_type = resolved.asset_type
+        normalized_symbol = normalize_symbol(resolved.ticker)
+        if normalized_asset_type in {"국내주식", "국내ETF"}:
+            normalized_symbol = normalized_symbol.replace(".KS", "").replace(".KQ", "")
+        currency = currency or resolved.currency
+    else:
+        normalized_symbol = normalize_symbol(symbol)
 
     validation_error = validate_request(
         asset_type=normalized_asset_type,

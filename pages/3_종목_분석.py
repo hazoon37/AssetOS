@@ -96,14 +96,14 @@ with button_col1:
     analyze_clicked = st.button(
         "종목 분석",
         type="primary",
-        use_container_width=True,
+        width="stretch",
     )
 
 with button_col2:
 
     clear_clicked = st.button(
         "결과 초기화",
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -186,6 +186,32 @@ if result:
         "asset_type",
         asset_type,
     )
+
+    if result.get("resolution_status") == "ambiguous":
+        candidates = result.get("candidates") or []
+        selected_candidate = st.selectbox(
+            "분석할 종목 선택",
+            options=candidates,
+            index=None,
+            placeholder="후보를 선택하세요",
+            format_func=lambda candidate: (
+                f"{candidate['display_name']} · {candidate['ticker']} · {candidate['exchange']}"
+            ),
+            key="company_analysis_candidate",
+        )
+        if st.button(
+            "선택 종목 분석",
+            disabled=selected_candidate is None,
+            width="stretch",
+            key="company_analysis_candidate_submit",
+        ):
+            with st.spinner("선택한 종목을 분석하고 있습니다..."):
+                st.session_state[SESSION_RESULT_KEY] = analyze_company(
+                    asset_type=selected_candidate["asset_type"],
+                    symbol=selected_candidate["ticker"],
+                    currency=selected_candidate["currency"],
+                )
+            st.rerun()
 
 
     # ==============================================

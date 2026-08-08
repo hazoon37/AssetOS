@@ -75,7 +75,7 @@ def _render_pdf_preview(result: dict[str, Any]) -> None:
                 legend_title_text="",
             )
             fig.update_traces(textposition="inside", textinfo="percent")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("자산군 데이터가 없습니다.")
 
@@ -92,7 +92,7 @@ def _render_pdf_preview(result: dict[str, Any]) -> None:
                 }
             )
         if top_rows:
-            st.dataframe(pd.DataFrame(top_rows), use_container_width=True, hide_index=True, height=300)
+            st.dataframe(pd.DataFrame(top_rows), width="stretch", hide_index=True, height=300)
         else:
             st.info("표시할 보유자산이 없습니다.")
 
@@ -128,7 +128,7 @@ def render_portfolio_report(result: dict[str, Any]) -> None:
         return
 
     # PDF와 미리보기는 포트폴리오 상단의 현재 선택 기준을 다시 읽어 동일한 결과를 사용합니다.
-    current_mode = st.session_state.get("portfolio_view_mode", "전체 자산")
+    current_mode = st.session_state.get("portfolio_view_mode", "부동산 제외")
     exclude_real_estate = current_mode == "부동산 제외"
     report_result = get_portfolio_analysis(exclude_real_estate=exclude_real_estate)
 
@@ -156,7 +156,7 @@ def render_portfolio_report(result: dict[str, Any]) -> None:
             file_name=build_portfolio_pdf_filename(report_result),
             mime="application/pdf",
             type="primary",
-            use_container_width=False,
+            width="content",
         )
     except Exception as error:
         st.error(f"PDF 생성 중 오류가 발생했습니다: {error}")

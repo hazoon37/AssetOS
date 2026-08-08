@@ -10,6 +10,7 @@ from services.asset_metadata_service import (
 from services.dart_service import (
     get_dart_company_data,
 )
+from services.asset_resolver import resolve_asset
 
 from services.financial_metrics import (
     calculate_debt_ratio,
@@ -93,8 +94,10 @@ def analyze_korean_stock(
     국내주식 가치·수익성·안정성 지표를 계산합니다.
     """
 
+    resolution = resolve_asset(stock_code)
+    resolved_ticker = resolution.ticker if resolution.success else stock_code
     normalized_code = (
-        stock_code.strip()
+        str(resolved_ticker or "").strip()
         .upper()
         .replace(".KS", "")
         .replace(".KQ", "")

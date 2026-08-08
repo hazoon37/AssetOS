@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from .constants import CURRENCY_SYMBOLS
+from ui.common.formatters import format_currency
 
 
 def get_default_currency(asset_type: str) -> str:
@@ -37,8 +37,7 @@ def get_symbol_placeholder(asset_type: str) -> str:
 
 
 def format_currency_value(value: float, currency: str) -> str:
-    symbol = CURRENCY_SYMBOLS.get(currency, currency)
-    return f"{symbol} {float(value):,.0f}"
+    return format_currency(value, currency)
 
 
 def format_quantity_value(value: float, asset_type: str) -> str:

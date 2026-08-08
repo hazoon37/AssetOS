@@ -1,0 +1,274 @@
+{
+  "0183J0.KS": {
+    "aliases": [
+      "0183j0.ks",
+      "tiger 미국우주테크"
+    ],
+    "asset_type": "국내ETF",
+    "company_name": "DBS Bank LTD - Mirae Asset Tiger US SPAC Fund",
+    "company_name_ko": "",
+    "country": "KR",
+    "currency": "KRW",
+    "display_name": "DBS Bank LTD - Mirae Asset Tiger US SPAC Fund",
+    "exchange": "KSC",
+    "industry": "",
+    "is_dividend": false,
+    "is_leveraged": false,
+    "provider": "Yahoo Finance",
+    "sector": "Unclassified",
+    "status": "active",
+    "theme": "",
+    "ticker": "0183J0.KS"
+  },
+  "0190Y0.KS": {
+    "aliases": [
+      "tiger 미국배당다우존스"
+    ],
+    "asset_type": "국내ETF",
+    "company_name": "Mirae Asset Tiger Google Value Chain Etf",
+    "company_name_ko": "",
+    "country": "KR",
+    "currency": "KRW",
+    "display_name": "Mirae Asset Tiger Google Value Chain Etf",
+    "exchange": "KSC",
+    "industry": "",
+    "is_dividend": false,
+    "is_leveraged": false,
+    "provider": "Yahoo Finance",
+    "sector": "Unclassified",
+    "status": "active",
+    "theme": "",
+    "ticker": "0190Y0.KS"
+  },
+  "034020.KS": {
+    "aliases": [
+      "두산에너빌리티",
+      "doosan enerbility",
+      "034020"
+    ],
+    "asset_type": "국내주식",
+    "company_name": "두산에너빌리티",
+    "company_name_ko": "두산에너빌리티",
+    "country": "KR",
+    "currency": "KRW",
+    "display_name": "두산에너빌리티",
+    "exchange": "KOSPI",
+    "industry": "Specialty Industrial Machinery",
+    "is_dividend": false,
+    "is_leveraged": false,
+    "provider": "AssetOS",
+    "sector": "Industrials",
+    "status": "active",
+    "theme": "Energy|Nuclear",
+    "ticker": "034020.KS"
+  },
+  "360200.KS": {
+    "aliases": [
+      "ace 미국s&p500"
+    ],
+    "asset_type": "국내ETF",
+    "company_name": "Kim Kindex S&P 500 Etf",
+    "company_name_ko": "",
+    "country": "KR",
+    "currency": "KRW",
+    "display_name": "Kim Kindex S&P 500 Etf",
+    "exchange": "KSC",
+    "industry": "",
+    "is_dividend": false,
+    "is_leveraged": false,
+    "provider": "Yahoo Finance",
+    "sector": "Unclassified",
+    "status": "active",
+    "theme": "",
+    "ticker": "360200.KS"
+  },
+  "373220.KS": {
+    "aliases": [
+      "lg에너지솔루션",
+      "lg energy solution",
+      "373220"
+    ],
+    "asset_type": "국내주식",
+    "company_name": "LG에너지솔루션",
+    "company_name_ko": "LG에너지솔루션",
+    "country": "KR",
+    "currency": "KRW",
+    "display_name": "LG에너지솔루션",
+    "exchange": "KOSPI",
+    "industry": "Electrical Equipment",
+    "is_dividend": false,
+    "is_leveraged": false,
+    "provider": "AssetOS",
+    "sector": "Industrials",
+    "status": "active",
+    "theme": "Battery",
+    "ticker": "373220.KS"
+  },
+  "BITX": {
+    "aliases": [
+      "bitx"
+    ],
+    "asset_type": "미국ETF",
+    "company_name": "2x Bitcoin Strategy ETF",
+    "company_name_ko": "",
+    "country": "US",
+    "currency": "USD",
+    "display_name": "2x Bitcoin Strategy ETF",
+    "exchange": "BTS",
+    "industry": "",
+    "is_dividend": false,
+    "is_leveraged": false,
+    "provider": "Yahoo Finance",
+    "sector": "Unclassified",
+    "status": "active",
+    "theme": "",
+    "ticker": "BITX"
+  },
+  "CRISPR": {
+    "aliases": [
+      "crispr",
+      "크리스퍼 테라퓨틱스"
+    ],
+    "asset_type": "코인",
+    "company_name": "CRISPR USD",
+    "company_name_ko": "",
+    "country": "OTHER",
+    "currency": "USD",
+    "display_name": "CRISPR USD",
+    "exchange": "CCC",
+    "industry": "",
+    "is_dividend": false,
+    "is_leveraged": false,
+    "provider": "Yahoo Finance",
+    "sector": "Unclassified",
+    "status": "active",
+    "theme": "",
+    "ticker": "CRISPR"
+  },
+  "DFDV": {
+    "aliases": [
+      "dfdv",
+      "디파이 디벨롭먼트"
+    ],
+    "asset_type": "미국주식",
+    "company_name": "DeFi Development Corp.",
+    "company_name_ko": "",
+    "country": "US",
+    "currency": "USD",
+    "display_name": "DeFi Development Corp.",
+    "exchange": "NCM",
+    "industry": "Asset Management",
+    "is_dividend": false,
+    "is_leveraged": false,
+    "provider": "Yahoo Finance",
+    "sector": "Financial Services",
+    "status": "active",
+    "theme": "",
+    "ticker": "DFDV"
+  },
+  "JEPQ": {
+    "aliases": [
+      "jepq",
+      "나스닥 100 j.p.모건 etf"
+    ],
+    "asset_type": "미국ETF",
+    "company_name": "JPMorgan Nasdaq Equity Premium Income ETF",
+    "company_name_ko": "",
+    "country": "US",
+    "currency": "USD",
+    "display_name": "JPMorgan Nasdaq Equity Premium Income ETF",
+    "exchange": "NGM",
+    "industry": "",
+    "is_dividend": false,
+    "is_leveraged": false,
+    "provider": "Yahoo Finance",
+    "sector": "Unclassified",
+    "status": "active",
+    "theme": "",
+    "ticker": "JEPQ"
+  },
+  "OBE": {
+    "aliases": [
+      "obe",
+      "옵시디언 에너지"
+    ],
+    "asset_type": "미국주식",
+    "company_name": "Obsidian Energy Ltd.",
+    "company_name_ko": "",
+    "country": "US",
+    "currency": "USD",
+    "display_name": "Obsidian Energy Ltd.",
+    "exchange": "ASE",
+    "industry": "Oil & Gas E&P",
+    "is_dividend": false,
+    "is_leveraged": false,
+    "provider": "Yahoo Finance",
+    "sector": "Energy",
+    "status": "active",
+    "theme": "",
+    "ticker": "OBE"
+  },
+  "SBET": {
+    "aliases": [
+      "sbet",
+      "샤프링크 게이밍"
+    ],
+    "asset_type": "미국주식",
+    "company_name": "Sharplink, Inc.",
+    "company_name_ko": "",
+    "country": "US",
+    "currency": "USD",
+    "display_name": "Sharplink, Inc.",
+    "exchange": "NCM",
+    "industry": "Capital Markets",
+    "is_dividend": false,
+    "is_leveraged": false,
+    "provider": "Yahoo Finance",
+    "sector": "Financial Services",
+    "status": "active",
+    "theme": "",
+    "ticker": "SBET"
+  },
+  "SPCX": {
+    "aliases": [
+      "spcx",
+      "스페이스x"
+    ],
+    "asset_type": "미국주식",
+    "company_name": "Space Exploration Technologies Corp.",
+    "company_name_ko": "",
+    "country": "US",
+    "currency": "USD",
+    "display_name": "Space Exploration Technologies Corp.",
+    "exchange": "NMS",
+    "industry": "Aerospace & Defense",
+    "is_dividend": false,
+    "is_leveraged": false,
+    "provider": "Yahoo Finance",
+    "sector": "Industrials",
+    "status": "active",
+    "theme": "",
+    "ticker": "SPCX"
+  },
+  "TMF": {
+    "aliases": [
+      "tmf",
+      "미국채 20년 레버리지 3배 디렉시온"
+    ],
+    "asset_type": "미국ETF",
+    "company_name": "Direxion Daily 20+ Year Treasury Bull 3X Shares",
+    "company_name_ko": "",
+    "country": "US",
+    "currency": "USD",
+    "display_name": "Direxion Daily 20+ Year Treasury Bull 3X Shares",
+    "exchange": "PCX",
+    "industry": "",
+    "is_dividend": false,
+    "is_leveraged": false,
+    "provider": "Yahoo Finance",
+    "sector": "Unclassified",
+    "status": "active",
+    "theme": "",
+    "ticker": "TMF"
+  }
+}

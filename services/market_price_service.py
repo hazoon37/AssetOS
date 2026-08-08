@@ -6,6 +6,8 @@ import requests
 import streamlit as st
 import yfinance as yf
 
+from services.asset_resolver import is_resolvable_asset_type, resolve_asset
+
 
 COINGECKO_API_URL = "https://api.coingecko.com/api/v3"
 
@@ -300,6 +302,35 @@ def get_market_price(
     currency: str,
 ) -> dict[str, Any]:
     """자산 종류에 맞는 가격 조회 함수를 실행합니다."""
+
+    if not is_resolvable_asset_type(asset_type):
+        return {
+            "success": False,
+            "price": None,
+            "symbol": None,
+            "status": "Skip",
+            "message": "시세 조회가 필요하지 않은 자산 종류입니다.",
+        }
+    requested_currency = str(currency or "").upper()
+    resolution = resolve_asset(symbol, asset_type=asset_type)
+    if resolution.success and resolution.asset is not None:
+        symbol = resolution.asset.ticker
+        asset_type = resolution.asset.asset_type or asset_type
+        # CoinGecko can quote crypto directly in the portfolio currency.  Keep
+        # that requested quote currency so a KRW cost basis is never compared
+        # with a USD market price. Securities use their listing currency.
+        currency = (
+            requested_currency or resolution.asset.currency
+            if asset_type == "코인"
+            else resolution.asset.currency or requested_currency
+        )
+    elif resolution.status == "ambiguous":
+        return {
+            "success": False,
+            "price": None,
+            "message": "여러 자산 후보가 있어 티커를 확정할 수 없습니다.",
+            "candidates": [candidate.ticker for candidate in resolution.candidates],
+        }
 
     if asset_type == "코인":
         return get_crypto_price(

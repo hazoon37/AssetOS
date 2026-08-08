@@ -17,7 +17,7 @@ def render_inline_delete_confirm(row: pd.Series) -> None:
     st.warning(f"‘{asset_name}’ 자산을 삭제하시겠습니까? 삭제 후에는 되돌릴 수 없습니다.")
     delete_col, cancel_col = st.columns(2)
     if delete_col.button(
-        "삭제 확정", type="primary", use_container_width=True,
+        "삭제 확정", type="primary", width="stretch",
         key=f"inline_delete_confirm_{asset_id}",
     ):
         remove_asset(asset_id)
@@ -25,7 +25,7 @@ def render_inline_delete_confirm(row: pd.Series) -> None:
         st.success("선택한 자산이 삭제되었습니다.")
         st.rerun()
     if cancel_col.button(
-        "취소", use_container_width=True, key=f"inline_delete_cancel_{asset_id}",
+        "취소", width="stretch", key=f"inline_delete_cancel_{asset_id}",
     ):
         clear_action_state()
         st.rerun()

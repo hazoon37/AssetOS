@@ -1,0 +1,63 @@
+ticker,display_name,asset_type,country,currency,sector,industry,exchange,provider,theme,is_dividend,is_leveraged,company_name,company_name_ko,aliases,status
+005930.KS,삼성전자,국내주식,KR,KRW,Technology,Semiconductors,KOSPI,AssetOS,AI|Semiconductor,true,false
+204020.KQ,그리티,국내주식,KR,KRW,Consumer Cyclical,Apparel Manufacturing,KOSDAQ,AssetOS,,false,false,GrITEE Inc.,그리티,그리티|gritee,active
+272210.KS,한화시스템,국내주식,KR,KRW,Industrials,Aerospace & Defense,KOSPI,AssetOS,Defense,false,false,Hanwha Systems,한화시스템,한화시스템|hanwha systems,active
+005935.KS,삼성전자우,국내주식,KR,KRW,Technology,Semiconductors,KOSPI,AssetOS,Semiconductor|Preferred,true,false
+006400.KS,삼성SDI,국내주식,KR,KRW,Technology,Electrical Equipment,KOSPI,AssetOS,Battery,false,false
+035420.KS,NAVER,국내주식,KR,KRW,Communication Services,Internet Content,KOSPI,AssetOS,Internet|Platform,false,false
+009150.KS,삼성전기,국내주식,KR,KRW,Technology,Electronic Components,KOSPI,AssetOS,Electronics,false,false
+000660.KS,SK하이닉스,국내주식,KR,KRW,Technology,Semiconductors,KOSPI,AssetOS,AI|Semiconductor,true,false
+068270.KS,셀트리온,국내주식,KR,KRW,Healthcare,Biotechnology,KOSPI,AssetOS,Biotechnology,false,false
+042660.KS,한화오션,국내주식,KR,KRW,Industrials,Marine Shipbuilding,KOSPI,AssetOS,Shipbuilding,false,false
+086280.KS,현대글로비스,국내주식,KR,KRW,Industrials,Integrated Freight & Logistics,KOSPI,AssetOS,Logistics,true,false
+323410.KS,카카오뱅크,국내주식,KR,KRW,Financial Services,Banks,KOSPI,AssetOS,Digital Bank,false,false
+011200.KS,HMM,국내주식,KR,KRW,Industrials,Marine Shipping,KOSPI,AssetOS,Shipping,false,false
+373220.KS,LG에너지솔루션,국내주식,KR,KRW,Industrials,Electrical Equipment,KOSPI,AssetOS,Battery,false,false
+207940.KS,삼성바이오로직스,국내주식,KR,KRW,Healthcare,Biotechnology,KOSPI,AssetOS,Biotechnology,false,false
+005380.KS,현대차,국내주식,KR,KRW,Consumer Cyclical,Auto Manufacturers,KOSPI,AssetOS,Automotive,true,false
+000270.KS,기아,국내주식,KR,KRW,Consumer Cyclical,Auto Manufacturers,KOSPI,AssetOS,Automotive,true,false
+105560.KS,KB금융,국내주식,KR,KRW,Financial Services,Banks,KOSPI,AssetOS,Finance|Dividend,true,false
+055550.KS,신한지주,국내주식,KR,KRW,Financial Services,Banks,KOSPI,AssetOS,Finance|Dividend,true,false
+005490.KS,POSCO홀딩스,국내주식,KR,KRW,Basic Materials,Steel,KOSPI,AssetOS,Materials|Dividend,true,false
+028260.KS,삼성물산,국내주식,KR,KRW,Industrials,Conglomerates,KOSPI,AssetOS,Conglomerate,true,false
+051910.KS,LG화학,국내주식,KR,KRW,Basic Materials,Chemicals,KOSPI,AssetOS,Chemicals|Battery,true,false
+035720.KS,카카오,국내주식,KR,KRW,Communication Services,Internet Content,KOSPI,AssetOS,Internet|Platform,false,false
+066570.KS,LG전자,국내주식,KR,KRW,Technology,Consumer Electronics,KOSPI,AssetOS,Electronics,true,false
+015760.KS,한국전력,국내주식,KR,KRW,Utilities,Utilities Regulated Electric,KOSPI,AssetOS,Utilities,false,false
+329180.KS,HD현대중공업,국내주식,KR,KRW,Industrials,Marine Shipbuilding,KOSPI,AssetOS,Shipbuilding,false,false
+034020.KS,두산에너빌리티,국내주식,KR,KRW,Industrials,Specialty Industrial Machinery,KOSPI,AssetOS,Energy|Nuclear,false,false
+069500.KS,KODEX 200,국내ETF,KR,KRW,Broad Market,Large Blend,KOSPI,AssetOS,Korea Market|Core,true,false
+360750.KS,TIGER 미국S&P500,국내ETF,KR,KRW,Broad Market,Large Blend,KOSPI,AssetOS,US Market|Core,true,false
+457550.KQ,우진엔텍,국내주식,KR,KRW,Industrials,Specialty Industrial Machinery,KOSDAQ,AssetOS,Nuclear,false,false
+360200.KS,ACE 미국S&P500,국내ETF,KR,KRW,Broad Market,Large Blend,KOSPI,AssetOS,US Market|Core,true,false
+133690.KS,TIGER 미국나스닥100,국내ETF,KR,KRW,Technology,Large Growth,KOSPI,AssetOS,Technology|Growth,true,false
+486290.KS,TIGER 미국나스닥100타겟데일리커버드콜,국내ETF,KR,KRW,Technology,Derivative Income,KOSPI,AssetOS,Technology|Covered Call,true,false
+441640.KS,KODEX 미국배당커버드콜액티브,국내ETF,KR,KRW,Dividend,Derivative Income,KOSPI,AssetOS,Dividend|Covered Call,true,false
+458730.KS,TIGER 미국배당다우존스,국내ETF,KR,KRW,Dividend,Large Value,KOSPI,AssetOS,Dividend|Value,true,false
+AAPL,Apple,미국주식,US,USD,Technology,Consumer Electronics,NASDAQ,AssetOS,Technology|Consumer,true,false
+NVDA,NVIDIA,미국주식,US,USD,Technology,Semiconductors,NASDAQ,AssetOS,AI|Semiconductor,true,false
+MSFT,Microsoft,미국주식,US,USD,Technology,Software,NASDAQ,AssetOS,AI|Cloud,true,false
+GOOGL,Alphabet,미국주식,US,USD,Communication Services,Internet Content,NASDAQ,AssetOS,AI|Internet,false,false
+GOOG,Alphabet Class C,미국주식,US,USD,Communication Services,Internet Content,NASDAQ,AssetOS,AI|Internet,false,false
+AMZN,Amazon,미국주식,US,USD,Consumer Cyclical,Internet Retail,NASDAQ,AssetOS,Cloud|Consumer,false,false
+META,Meta Platforms,미국주식,US,USD,Communication Services,Internet Content,NASDAQ,AssetOS,AI|Social,false,false
+TSLA,Tesla,미국주식,US,USD,Consumer Cyclical,Auto Manufacturers,NASDAQ,AssetOS,EV,false,false
+AVGO,Broadcom,미국주식,US,USD,Technology,Semiconductors,NASDAQ,AssetOS,AI|Semiconductor,true,false
+AMD,Advanced Micro Devices,미국주식,US,USD,Technology,Semiconductors,NASDAQ,AssetOS,AI|Semiconductor,false,false
+PLTR,Palantir Technologies,미국주식,US,USD,Technology,Software,NASDAQ,AssetOS,AI|Software,false,false
+NFLX,Netflix,미국주식,US,USD,Communication Services,Entertainment,NASDAQ,AssetOS,Streaming,false,false
+KO,Coca-Cola,미국주식,US,USD,Consumer Defensive,Beverages,NYSE,AssetOS,Dividend|Consumer,true,false
+JNJ,Johnson & Johnson,미국주식,US,USD,Healthcare,Drug Manufacturers,NYSE,AssetOS,Healthcare|Dividend,true,false
+JPM,JPMorgan Chase,미국주식,US,USD,Financial Services,Banks,NYSE,AssetOS,Finance|Dividend,true,false
+SPY,SPDR S&P 500 ETF Trust,미국ETF,US,USD,Broad Market,Large Blend,NYSE Arca,AssetOS,US Market|Core,true,false
+VOO,Vanguard S&P 500 ETF,미국ETF,US,USD,Broad Market,Large Blend,NYSE Arca,AssetOS,US Market|Core,true,false
+QQQ,Invesco QQQ Trust,미국ETF,US,USD,Technology,Large Growth,NASDAQ,AssetOS,Technology|Growth,true,false
+QLD,ProShares Ultra QQQ,미국ETF,US,USD,Technology,Trading Leveraged Equity,NYSE Arca,AssetOS,Technology|Leveraged,false,true
+SCHD,Schwab US Dividend Equity ETF,미국ETF,US,USD,Dividend,Large Value,NYSE Arca,AssetOS,Dividend|Value,true,false
+TLT,iShares 20+ Year Treasury Bond ETF,미국ETF,US,USD,Fixed Income,Government Bonds,NASDAQ,AssetOS,Treasury|Duration,true,false
+SGOV,iShares 0-3 Month Treasury Bond ETF,미국ETF,US,USD,Fixed Income,Government Bonds,NYSE Arca,AssetOS,Cash Equivalent|Treasury,true,false
+TQQQ,ProShares UltraPro QQQ,미국ETF,US,USD,Technology,Trading Leveraged Equity,NASDAQ,AssetOS,Technology|Leveraged,false,true
+SQQQ,ProShares UltraPro Short QQQ,미국ETF,US,USD,Technology,Trading Inverse Equity,NASDAQ,AssetOS,Technology|Inverse|Leveraged,false,true
+SOXL,Direxion Daily Semiconductor Bull 3X Shares,미국ETF,US,USD,Semiconductors,Trading Leveraged Equity,NYSE Arca,AssetOS,AI|Semiconductor|Leveraged,false,true
+BTC,Bitcoin,코인,GLOBAL,USD,Cryptocurrency,Digital Asset,CoinGecko,AssetOS,Crypto,false,false
+ETH,Ethereum,코인,GLOBAL,USD,Cryptocurrency,Smart Contract Platform,CoinGecko,AssetOS,Crypto|Smart Contract,false,false

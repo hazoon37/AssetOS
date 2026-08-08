@@ -96,7 +96,7 @@ symbol = st.text_input(
 lookup_button = st.button(
     "현재가 조회",
     type="primary",
-    use_container_width=True,
+    width="stretch",
 )
 
 

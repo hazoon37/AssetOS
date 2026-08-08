@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -7,23 +9,40 @@ import streamlit as st
 from components.asset_management.asset_manager_panel import render_asset_manager_panel
 from database.db import (
     create_tables,
+    get_accounts,
     get_assets,
     update_asset_current_price,
 )
 from services.exchange_rate_service import (
-    convert_to_krw,
     get_exchange_rates_to_krw,
 )
 from services.market_price_service import (
     get_market_price,
+)
+from services.portfolio_ai_service import diagnose_portfolio
+from services.portfolio_service import get_portfolio_analysis
+from services.quick_analysis_export_service import (
+    export_quick_analysis_json,
+    export_quick_analysis_pdf,
+    export_quick_analysis_png,
+)
+from ui.common.formatters import (
+    CURRENCY_SYMBOLS,
+    format_asset_type,
+    format_currency,
+    format_number,
+    format_percent,
+)
+from ui.components.ai_advisor_card import (
+    render_ai_advisor_diagnosis,
+    render_ai_advisor_summary,
 )
 from ui.components.metric_card import (
     render_ai_card,
     render_metric_grid,
     render_page_header,
 )
-from ui.theme import ASSET_COLORS, apply_theme
-
+from ui.theme import ASSET_COLORS, apply_theme, theme_text_color
 
 apply_theme()
 create_tables()
@@ -54,34 +73,9 @@ AUTO_UPDATE_ASSET_TYPES = [
     "코인",
 ]
 
-CURRENCY_NAMES = {
-    "KRW": "대한민국 원",
-    "USD": "미국 달러",
-    "JPY": "일본 엔",
-    "HKD": "홍콩 달러",
-    "EUR": "유로",
-    "GBP": "영국 파운드",
-}
-
-CURRENCY_SYMBOLS = {
-    "KRW": "₩",
-    "USD": "$",
-    "JPY": "¥",
-    "HKD": "HK$",
-    "EUR": "€",
-    "GBP": "£",
-}
-
-
 # ==================================================
 # 공통 함수
 # ==================================================
-
-def format_krw(value: float) -> str:
-    """원화 금액을 보기 좋게 표시합니다."""
-
-    return f"₩ {value:,.0f}"
-
 
 def format_original_currency(
     value: float,
@@ -89,12 +83,7 @@ def format_original_currency(
 ) -> str:
     """원래 통화로 금액을 표시합니다."""
 
-    symbol = CURRENCY_SYMBOLS.get(
-        currency,
-        currency,
-    )
-
-    return f"{symbol} {value:,.0f}"
+    return format_currency(value, currency)
 
 
 def format_quantity(
@@ -104,112 +93,74 @@ def format_quantity(
     """자산 종류에 따라 수량 자릿수를 표시합니다."""
 
     if asset_type == "코인":
-        return f"{value:,.8f}"
+        return format_number(value, decimal_places=8)
 
     if asset_type in [
         "미국주식",
         "미국ETF",
     ]:
-        return f"{value:,.4f}"
+        return format_number(value, decimal_places=4)
 
-    return f"{value:,.0f}"
+    return format_number(value)
 
 
-def convert_row_value_to_krw(
-    row: pd.Series,
-    column_name: str,
-    exchange_rates: dict[str, float],
-) -> float | None:
-    """데이터프레임 행의 금액을 원화로 환산합니다."""
-
-    return convert_to_krw(
-        amount=float(row[column_name]),
-        currency=str(row["currency"]),
-        rates=exchange_rates,
+def render_allocation_chart(
+    assets: pd.DataFrame,
+    dimension: str,
+    label: str,
+) -> None:
+    """Render one consistent portfolio allocation view."""
+    if dimension not in assets.columns:
+        st.info(f"{label} 메타데이터가 없습니다.")
+        return
+    summary = assets.assign(
+        _allocation_label=(
+            assets[dimension].fillna("").astype(str).replace("", "Unclassified")
+        )
+    ).groupby("_allocation_label", as_index=False)["원화 평가금액"].sum()
+    if dimension == "asset_type":
+        summary["_allocation_label"] = summary["_allocation_label"].map(
+            format_asset_type
+        )
+    summary = summary[summary["원화 평가금액"] > 0].sort_values(
+        "원화 평가금액", ascending=False
     )
-
-
-def calculate_portfolio(
-    assets_dataframe: pd.DataFrame,
-    exchange_rates: dict[str, float],
-) -> pd.DataFrame:
-    """자산 손익과 원화 환산금액을 계산합니다."""
-
-    dataframe = assets_dataframe.copy()
-
-    numeric_columns = [
-        "quantity",
-        "average_price",
-        "current_price",
-    ]
-
-    for column in numeric_columns:
-
-        dataframe[column] = pd.to_numeric(
-            dataframe[column],
-            errors="coerce",
-        ).fillna(0.0)
-
-    dataframe["매입금액"] = (
-        dataframe["quantity"]
-        * dataframe["average_price"]
+    if summary.empty:
+        st.info(f"표시할 {label} 배분 데이터가 없습니다.")
+        return
+    chart = px.pie(
+        summary,
+        names="_allocation_label",
+        values="원화 평가금액",
+        hole=0.62,
+        color="_allocation_label",
+        color_discrete_map=ASSET_COLORS if dimension == "asset_type" else None,
     )
-
-    dataframe["평가금액"] = (
-        dataframe["quantity"]
-        * dataframe["current_price"]
-    )
-
-    dataframe["평가손익"] = (
-        dataframe["평가금액"]
-        - dataframe["매입금액"]
-    )
-
-    dataframe["수익률"] = 0.0
-
-    valid_purchase_rows = (
-        dataframe["매입금액"] > 0
-    )
-
-    dataframe.loc[
-        valid_purchase_rows,
-        "수익률",
-    ] = (
-        dataframe.loc[
-            valid_purchase_rows,
-            "평가손익",
-        ]
-        / dataframe.loc[
-            valid_purchase_rows,
-            "매입금액",
-        ]
-        * 100
-    )
-
-    dataframe["원화 매입금액"] = dataframe.apply(
-        lambda row: convert_row_value_to_krw(
-            row=row,
-            column_name="매입금액",
-            exchange_rates=exchange_rates,
+    chart.update_traces(
+        textposition="inside",
+        texttemplate="%{label}<br>%{percent}",
+        hovertemplate=(
+            f"%{{label}}<br>평가금액: "
+            f"{CURRENCY_SYMBOLS.get(base_currency, base_currency + ' ')}"
+            "%{value:,.0f}<br>"
+            "비중: %{percent}<extra></extra>"
         ),
-        axis=1,
     )
-
-    dataframe["원화 평가금액"] = dataframe.apply(
-        lambda row: convert_row_value_to_krw(
-            row=row,
-            column_name="평가금액",
-            exchange_rates=exchange_rates,
-        ),
-        axis=1,
+    chart.update_layout(
+        margin={"l": 10, "r": 10, "t": 18, "b": 10},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        legend_title_text="",
+        font={"color": theme_text_color(), "size": 12},
     )
-
-    dataframe["원화 평가손익"] = (
-        dataframe["원화 평가금액"]
-        - dataframe["원화 매입금액"]
+    st.plotly_chart(chart, width="stretch")
+    table = summary[["_allocation_label", "원화 평가금액"]].rename(
+        columns={"_allocation_label": label, "원화 평가금액": "평가금액"}
     )
-
-    return dataframe
+    table["평가금액"] = table["평가금액"].map(
+        lambda value: format_currency(value, base_currency)
+    )
+    st.dataframe(table, width="stretch", hide_index=True)
 
 
 # ==================================================
@@ -221,7 +172,9 @@ def open_asset_manager() -> None:
     render_asset_manager_panel()
 
 
-header_column, action_column = st.columns([5, 1], vertical_alignment="center")
+header_column, advisor_column, action_column = st.columns(
+    [4.2, 1.4, 1], vertical_alignment="center"
+)
 with header_column:
     render_page_header(
         title="총 자산 현황",
@@ -230,8 +183,13 @@ with header_column:
             "금융자산 구성과 손익을 한눈에 확인합니다."
         ),
     )
+with advisor_column:
+    if st.button("🤖 AI 포트폴리오 진단", width="stretch"):
+        st.session_state["show_portfolio_ai_diagnosis"] = not st.session_state.get(
+            "show_portfolio_ai_diagnosis", False
+        )
 with action_column:
-    if st.button("➕ 자산관리", use_container_width=True):
+    if st.button("➕ 자산관리", width="stretch"):
         open_asset_manager()
 
 
@@ -239,15 +197,25 @@ with action_column:
 # 환율 및 자산 불러오기
 # ==================================================
 
-exchange_data = get_exchange_rates_to_krw()
+with st.spinner("계정과 환율 정보를 불러오는 중입니다..."):
+    exchange_data = get_exchange_rates_to_krw()
+    exchange_rates: dict[str, float] = exchange_data["rates"]
+    exchange_rate_date = exchange_data["date"]
+    accounts_df = get_accounts()
+account_options: dict[str, int | None] = {"전체 계정": None}
+for _, account in accounts_df.iterrows():
+    label = f"{account['account_name']} · {account['account_type']}"
+    account_options[label] = int(account["id"])
 
-exchange_rates: dict[str, float] = (
-    exchange_data["rates"]
+selected_account_label = st.selectbox(
+    "계정 필터",
+    options=list(account_options),
+    key="dashboard_account_filter",
+    help="선택한 투자계정의 자산만 대시보드에 표시합니다.",
 )
+selected_account_id = account_options[selected_account_label]
 
-exchange_rate_date = exchange_data["date"]
-
-assets_df = get_assets()
+assets_df = get_assets(account_id=selected_account_id)
 
 
 if assets_df.empty:
@@ -275,7 +243,7 @@ with refresh_col1:
     refresh_market_prices = st.button(
         "📈 전체 시세 새로고침",
         type="primary",
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -283,7 +251,7 @@ with refresh_col2:
 
     refresh_exchange_rates = st.button(
         "💱 환율 새로고침",
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -485,7 +453,7 @@ if refresh_market_prices:
         )
 
         # DB에 저장된 새 현재가를 다시 불러옵니다.
-        assets_df = get_assets()
+        assets_df = get_assets(account_id=selected_account_id)
 
 
 # ==================================================
@@ -545,40 +513,29 @@ if last_refresh_results:
 
             st.dataframe(
                 result_display_df,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
 
 # ==================================================
-# 포트폴리오 계산
+# 포트폴리오 표시 기준
 # ==================================================
 
-assets_df = calculate_portfolio(
-    assets_dataframe=assets_df,
-    exchange_rates=exchange_rates,
-)
-
-
-valid_assets_df = assets_df.dropna(
-    subset=[
-        "원화 매입금액",
-        "원화 평가금액",
-    ]
-).copy()
-
-
-# ==================================================
-# 대시보드 표시 기준
-# ==================================================
-
+base_currency = str(st.session_state.get("assetos_base_currency") or "KRW")
+base_rate = exchange_rates.get(base_currency)
+if base_rate is None or base_rate <= 0:
+    st.warning(
+        f"{base_currency} 환율을 가져오지 못해 이번 화면은 KRW 기준으로 표시합니다."
+    )
+    base_currency = "KRW"
+    base_rate = 1.0
 if "dashboard_view_mode" not in st.session_state:
     st.session_state["dashboard_view_mode"] = "부동산 제외"
 
 view_mode = st.radio(
     "대시보드 표시 기준",
     ["전체 자산", "부동산 제외"],
-    index=1,
     horizontal=True,
     key="dashboard_view_mode",
     help="부동산 제외를 선택하면 지표와 차트에서 부동산만 제외합니다. DB의 자산정보는 변경되지 않습니다.",
@@ -587,21 +544,75 @@ view_mode = st.radio(
 exclude_real_estate = view_mode == "부동산 제외"
 
 if exclude_real_estate:
-    real_estate_mask = (
-        valid_assets_df["asset_type"].fillna("").eq("부동산")
-    )
-
-    if "asset_class" in valid_assets_df.columns:
-        real_estate_mask = real_estate_mask | (
-            valid_assets_df["asset_class"].fillna("").eq("REAL_ESTATE")
-        )
-
-    valid_assets_df = valid_assets_df.loc[~real_estate_mask].copy()
-
     st.info(
         "현재 대시보드는 부동산을 제외한 유동·금융자산 기준입니다. "
         "등록된 부동산 자산과 전체 DB는 그대로 유지됩니다."
     )
+
+dashboard_analysis = get_portfolio_analysis(
+    exclude_real_estate=exclude_real_estate,
+    account_id=selected_account_id,
+)
+valid_assets_df = pd.DataFrame(dashboard_analysis.get("assets") or [])
+if not valid_assets_df.empty:
+    valid_assets_df["asset_name"] = valid_assets_df["name"]
+    valid_assets_df["원화 매입금액"] = valid_assets_df["cost_value_krw"]
+    valid_assets_df["원화 평가금액"] = valid_assets_df["value_krw"]
+    valid_assets_df["원화 평가손익"] = valid_assets_df["profit_loss_krw"]
+    valid_assets_df["수익률"] = valid_assets_df["return_rate"].fillna(0.0) * 100
+    if base_currency != "KRW":
+        for monetary_column in ("원화 매입금액", "원화 평가금액", "원화 평가손익"):
+            valid_assets_df[monetary_column] /= float(base_rate)
+else:
+    valid_assets_df = pd.DataFrame(columns=[
+        "asset_name", "symbol", "asset_type", "asset_class", "country",
+        "currency", "sector", "account_name", "quantity", "average_price",
+        "current_price", "원화 매입금액", "원화 평가금액",
+        "원화 평가손익", "수익률",
+    ])
+dashboard_diagnosis = None
+if dashboard_analysis.get("success"):
+    dashboard_diagnosis = diagnose_portfolio(dashboard_analysis)
+    render_ai_advisor_summary(dashboard_diagnosis)
+    dashboard_export_columns = st.columns(3)
+    dashboard_export_columns[0].download_button(
+        "Export PDF",
+        data=export_quick_analysis_pdf(dashboard_analysis, dashboard_diagnosis),
+        file_name=f"AssetOS_Dashboard_{datetime.now().astimezone():%Y%m%d}.pdf",
+        mime="application/pdf",
+        width="stretch",
+        key="dashboard_export_pdf",
+    )
+    dashboard_export_columns[1].download_button(
+        "Export PNG",
+        data=export_quick_analysis_png(dashboard_analysis, dashboard_diagnosis),
+        file_name=f"AssetOS_Dashboard_{datetime.now().astimezone():%Y%m%d}.png",
+        mime="image/png",
+        width="stretch",
+        key="dashboard_export_png",
+    )
+    dashboard_export_columns[2].download_button(
+        "Export JSON",
+        data=export_quick_analysis_json(dashboard_analysis, dashboard_diagnosis),
+        file_name=f"AssetOS_Dashboard_{datetime.now().astimezone():%Y%m%d}.json",
+        mime="application/json",
+        width="stretch",
+        key="dashboard_export_json",
+    )
+else:
+    render_ai_card("🤖 AI Portfolio Advisor", "분석 가능한 자산이 생기면 포트폴리오 진단을 표시합니다.")
+    st.caption("분석 가능한 평가금액이 생기면 PDF·PNG·JSON export를 사용할 수 있습니다.")
+st.divider()
+
+if st.session_state.get("show_portfolio_ai_diagnosis", False):
+    st.subheader("🤖 AI 포트폴리오 진단")
+    with st.spinner("포트폴리오 구조를 진단하고 있습니다..."):
+        if dashboard_diagnosis is None:
+            st.info("분석 가능한 포트폴리오 데이터가 없습니다.")
+        else:
+            render_ai_advisor_diagnosis(dashboard_diagnosis)
+            st.caption("현재 보유구조를 설명하는 Rule Engine 결과이며 투자 권유가 아닙니다.")
+    st.divider()
 
 
 # ==================================================
@@ -648,23 +659,23 @@ render_metric_grid(
     [
         {
             "label": "Total Asset",
-            "value": format_krw(total_value_krw),
+            "value": format_currency(total_value_krw, base_currency),
             "note": f"{asset_count:,}개 자산",
         },
         {
             "label": "Investment Principal",
-            "value": format_krw(total_purchase_krw),
+            "value": format_currency(total_purchase_krw, base_currency),
             "note": "현재 표시 기준 투자원금",
         },
         {
             "label": "Total Profit",
-            "value": format_krw(total_profit_krw),
-            "note": f"{total_profit_krw:+,.0f}원",
+            "value": format_currency(total_profit_krw, base_currency),
+            "note": f"{base_currency} 기준 누적 손익",
             "tone": profit_tone,
         },
         {
             "label": "Total Return %",
-            "value": f"{total_return_rate:+.2f}%",
+            "value": format_percent(total_return_rate, signed=True),
             "note": "투자원금 대비 누적 수익률",
             "tone": profit_tone,
         },
@@ -675,65 +686,18 @@ st.divider()
 
 
 # ==================================================
-# 자산 종류별 요약
-# ==================================================
-
-asset_type_summary = (
-    valid_assets_df.groupby(
-        "asset_type",
-        as_index=False,
-    )["원화 평가금액"]
-    .sum()
-    .sort_values(
-        "원화 평가금액",
-        ascending=False,
-    )
-)
-
-if not asset_type_summary.empty:
-
-    asset_type_summary["비중"] = (
-        asset_type_summary["원화 평가금액"]
-        / asset_type_summary[
-            "원화 평가금액"
-        ].sum()
-        * 100
-    )
-
-
-# ==================================================
 # 포트폴리오 배분
 # ==================================================
 
 st.subheader("Portfolio Allocation")
-
-if asset_type_summary.empty:
-    st.info("표시할 자산 데이터가 없습니다.")
-else:
-    asset_pie_chart = px.pie(
-        asset_type_summary,
-        names="asset_type",
-        values="원화 평가금액",
-        hole=0.62,
-        color="asset_type",
-        color_discrete_map=ASSET_COLORS,
-    )
-    asset_pie_chart.update_traces(
-        textposition="inside",
-        texttemplate="%{label}<br>%{percent}",
-        hovertemplate=(
-            "%{label}<br>평가금액: ₩ %{value:,.0f}<br>"
-            "비중: %{percent}<extra></extra>"
-        ),
-    )
-    asset_pie_chart.update_layout(
-        margin={"l": 10, "r": 10, "t": 18, "b": 10},
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        legend_title_text="",
-        font={"color": "#334155", "size": 12},
-    )
-    st.plotly_chart(asset_pie_chart, use_container_width=True)
+allocation_tabs = st.tabs(["자산 유형", "국가", "통화", "섹터", "계정"])
+for tab, dimension, label in zip(
+    allocation_tabs,
+    ["asset_type", "country", "currency", "sector", "account_name"],
+    ["자산 유형", "국가", "통화", "섹터", "계정"],
+):
+    with tab:
+        render_allocation_chart(valid_assets_df, dimension, label)
 
 
 st.divider()
@@ -767,7 +731,7 @@ top_profit_df = (
     profit_assets_df.loc[
         profit_assets_df["원화 평가손익"] > 0
     ]
-    .head(5)
+    .head(10)
     .copy()
 )
 
@@ -780,7 +744,7 @@ top_loss_df = (
         ascending=True,
         kind="stable",
     )
-    .head(5)
+    .head(10)
     .copy()
 )
 
@@ -815,11 +779,11 @@ def make_profit_loss_display(
     )
 
     display["손익"] = display["손익"].map(
-        lambda value: f"₩ {value:+,.0f}"
+        lambda value: format_currency(value, base_currency)
     )
 
     display["수익률"] = display["수익률"].map(
-        lambda value: f"{value:+,.2f}%"
+        lambda value: format_percent(value, signed=True)
     )
 
     return display.reset_index(drop=True)
@@ -844,7 +808,7 @@ with st.container(border=True):
     with profit_column1:
 
         st.markdown(
-            "#### 📈 평가이익 TOP 5"
+            "#### 📈 평가이익 TOP 10"
         )
 
         if profit_table.empty:
@@ -857,7 +821,7 @@ with st.container(border=True):
 
             st.dataframe(
                 profit_table,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 height=235,
                 column_config={
@@ -883,7 +847,7 @@ with st.container(border=True):
     with profit_column2:
 
         st.markdown(
-            "#### 📉 평가손실 TOP 5"
+            "#### 📉 평가손실 TOP 10"
         )
 
         if loss_table.empty:
@@ -896,7 +860,7 @@ with st.container(border=True):
 
             st.dataframe(
                 loss_table,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 height=235,
                 column_config={
@@ -918,15 +882,6 @@ with st.container(border=True):
                     ),
                 },
             )
-
-st.markdown("### AI Summary")
-render_ai_card(
-    "✨ AI Summary",
-    "포트폴리오 변화와 주요 리스크를 요약하는 AI 브리핑이 이곳에 표시될 예정입니다.",
-)
-
-st.divider()
-
 
 # ==================================================
 # 전체 보유자산 현황
@@ -959,10 +914,13 @@ holdings_display_df.columns = [
     "통화",
     "평균단가",
     "현재가",
-    "원화 평가금액",
-    "원화 평가손익",
+    f"{base_currency} 평가금액",
+    f"{base_currency} 평가손익",
     "수익률",
 ]
+holdings_display_df["자산 종류"] = holdings_display_df["자산 종류"].map(
+    format_asset_type
+)
 
 
 holdings_display_df[
@@ -988,7 +946,7 @@ for price_column in [
     holdings_display_df[
         price_column
     ] = holdings_display_df.apply(
-        lambda row: format_original_currency(
+        lambda row, price_column=price_column: format_original_currency(
             value=float(
                 row[price_column]
             ),
@@ -1000,25 +958,14 @@ for price_column in [
     )
 
 
-holdings_display_df[
-    "원화 평가금액"
-] = holdings_display_df[
-    "원화 평가금액"
-].map(
-    lambda value: (
-        f"₩ {value:,.0f}"
-    )
+value_column_label = f"{base_currency} 평가금액"
+profit_column_label = f"{base_currency} 평가손익"
+
+holdings_display_df[value_column_label] = holdings_display_df[value_column_label].map(
+    lambda value: format_currency(value, base_currency)
 )
-
-
-holdings_display_df[
-    "원화 평가손익"
-] = holdings_display_df[
-    "원화 평가손익"
-].map(
-    lambda value: (
-        f"₩ {value:+,.0f}"
-    )
+holdings_display_df[profit_column_label] = holdings_display_df[profit_column_label].map(
+    lambda value: format_currency(value, base_currency)
 )
 
 
@@ -1028,14 +975,14 @@ holdings_display_df[
     "수익률"
 ].map(
     lambda value: (
-        f"{value:+,.2f}%"
+        format_percent(value, signed=True)
     )
 )
 
 
 st.dataframe(
     holdings_display_df,
-    use_container_width=True,
+    width="stretch",
     hide_index=True,
 )
 

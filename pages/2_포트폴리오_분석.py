@@ -5,7 +5,7 @@ import streamlit as st
 from components.asset_management.add_asset_tab import render_add_asset_tab
 from components.asset_management.excel_import_panel import render_excel_import_panel
 from components.asset_management.helpers import prepare_assets_dataframe
-from database.db import create_tables, get_assets
+from database.db import create_tables, get_accounts, get_assets
 from services.exchange_rate_service import get_exchange_rates_to_krw
 from services.portfolio_service import (
     clear_portfolio_analysis_cache,
@@ -29,7 +29,6 @@ from ui.portfolio.portfolio_views import (
 from ui.portfolio.report_views import render_portfolio_report
 from ui.theme import apply_theme
 
-
 apply_theme()
 create_tables()
 
@@ -41,11 +40,21 @@ st.write(
 
 exchange_data = get_exchange_rates_to_krw()
 exchange_rates: dict[str, float] = exchange_data.get("rates") or {"KRW": 1.0}
-assets_df = prepare_assets_dataframe(get_assets())
+accounts_df = get_accounts()
+account_options: dict[str, int | None] = {"전체 계정": None}
+for _, account in accounts_df.iterrows():
+    account_options[f"{account['account_name']} · {account['account_type']}"] = int(account["id"])
+selected_account_label = st.selectbox(
+    "보유자산 계정 필터",
+    options=list(account_options),
+    key="portfolio_account_filter",
+)
+selected_account_id = account_options[selected_account_label]
+assets_df = prepare_assets_dataframe(get_assets(account_id=selected_account_id))
 
 refresh_col, status_col = st.columns([1, 4])
 with refresh_col:
-    if st.button("전체 데이터 새로고침", type="primary", use_container_width=True):
+    if st.button("전체 데이터 새로고침", type="primary", width="stretch"):
         clear_portfolio_analysis_cache()
         st.rerun()
 with status_col:
@@ -53,6 +62,9 @@ with status_col:
         f"환율 기준일: {exchange_data.get('date') or '정보 없음'} · "
         f"등록 자산: {len(assets_df):,}개"
     )
+
+if "portfolio_view_mode" not in st.session_state:
+    st.session_state["portfolio_view_mode"] = "부동산 제외"
 
 view_mode = st.radio(
     "포트폴리오 표시 기준",
@@ -86,7 +98,7 @@ with holdings_tab:
     action_col1, action_col2 = st.columns(2)
     with action_col1:
         with st.expander("➕ 새 자산 등록", expanded=assets_df.empty):
-            render_add_asset_tab(exchange_rates)
+            render_add_asset_tab(exchange_rates, account_id=selected_account_id)
     with action_col2:
         with st.expander("📥 Excel 자산 DB 업데이트", expanded=False):
             render_excel_import_panel()
@@ -131,10 +143,11 @@ with allocation_tab:
         with sub_tabs[4]:
             render_asset_allocation(result.get("assets", []))
 
-        st.markdown("### AI Insight")
+        st.markdown("### Portfolio Insight")
+        insight_text = " ".join(str(item) for item in result.get("insights", []) if item)
         render_ai_card(
-            "✨ AI Insight",
-            "포트폴리오 구성과 분산 상태를 해석한 AI 인사이트가 이곳에 표시될 예정입니다.",
+            "✨ Portfolio Insight",
+            insight_text or "현재 데이터로 생성할 수 있는 추가 인사이트가 없습니다.",
         )
 
 with risk_tab:

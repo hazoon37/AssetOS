@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from database.db import delete_asset, update_asset
+from database.db import delete_asset, delete_assets, update_asset
 
 
 def _clear_portfolio_cache() -> None:
@@ -39,3 +39,10 @@ def save_asset_changes(
 def remove_asset(asset_id: int) -> None:
     delete_asset(asset_id)
     _clear_portfolio_cache()
+
+
+def remove_assets(asset_ids: list[int]) -> int:
+    """Delete a user-confirmed collection in one repository transaction."""
+    deleted = delete_assets(asset_ids)
+    _clear_portfolio_cache()
+    return deleted

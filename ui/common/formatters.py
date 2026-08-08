@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
-
+import math
 
 CURRENCY_SYMBOLS = {
     "KRW": "₩",
@@ -13,41 +12,49 @@ CURRENCY_SYMBOLS = {
 }
 
 
+def format_asset_type(value: object) -> str:
+    """Translate internal asset type names for Korean UI surfaces."""
+    label = str(value or "")
+    return "계좌" if label == "Account" else label
+
+
 def safe_float(
-    value: Any,
+    value: object,
 ) -> float | None:
-    """값을 안전하게 실수로 변환합니다."""
+    """Convert Python, pandas, and NumPy scalar values to a finite float."""
 
     if value is None:
         return None
 
     try:
-        return float(value)
+        number = float(str(value))
 
     except (TypeError, ValueError):
         return None
 
+    return number if math.isfinite(number) else None
+
 
 def normalize_currency(
-    currency: str | None,
+    currency: object,
 ) -> str:
     """통화 코드를 대문자로 정리합니다."""
 
-    return str(
-        currency or ""
-    ).strip().upper()
+    if currency is None:
+        return ""
+    return str(currency).strip().upper()
 
 
 def format_currency(
-    value: float | int | None,
-    currency: str | None = "KRW",
+    value: object,
+    currency: object = "KRW",
 ) -> str:
     """통화별 금액을 표시합니다."""
 
     number = safe_float(value)
 
     if number is None:
-        return "정보 없음"
+        return "-"
 
     normalized_currency = normalize_currency(
         currency
@@ -58,17 +65,15 @@ def format_currency(
         normalized_currency,
     )
 
-    if normalized_currency in {
-        "KRW",
-        "JPY",
-    }:
-        return f"{symbol} {number:,.0f}"
+    separator = "" if normalized_currency in CURRENCY_SYMBOLS else " "
+    if normalized_currency in {"KRW", "JPY"}:
+        return f"{symbol}{separator}{number:,.0f}"
 
-    return f"{symbol} {number:,.2f}"
+    return f"{symbol}{separator}{number:,.2f}"
 
 
 def format_krw(
-    value: float | int | None,
+    value: object,
 ) -> str:
     """원화 금액을 표시합니다."""
 
@@ -79,8 +84,8 @@ def format_krw(
 
 
 def format_large_currency(
-    value: float | int | None,
-    currency: str | None = None,
+    value: object,
+    currency: object = None,
 ) -> str:
     """큰 금액을 조·억·백만 단위로 표시합니다."""
 
@@ -88,6 +93,10 @@ def format_large_currency(
 
     if number is None:
         return "정보 없음"
+
+    normalized_currency = normalize_currency(currency)
+    if normalized_currency == "KRW":
+        return format_currency(number, normalized_currency)
 
     absolute_value = abs(number)
 
@@ -109,10 +118,6 @@ def format_large_currency(
     else:
         number_text = f"{number:,.0f}"
 
-    normalized_currency = normalize_currency(
-        currency
-    )
-
     if not normalized_currency:
         return number_text
 
@@ -125,7 +130,7 @@ def format_large_currency(
 
 
 def format_multiple(
-    value: float | int | None,
+    value: object,
 ) -> str:
     """PER·PBR 등 배수 지표를 표시합니다."""
 
@@ -138,7 +143,7 @@ def format_multiple(
 
 
 def format_decimal_percentage(
-    value: float | int | None,
+    value: object,
 ) -> str:
     """0.15 형태의 값을 15.00%로 표시합니다."""
 
@@ -147,11 +152,11 @@ def format_decimal_percentage(
     if number is None:
         return "정보 없음"
 
-    return f"{number * 100:,.2f}%"
+    return format_percent(number, decimal_input=True)
 
 
 def format_percentage_value(
-    value: float | int | None,
+    value: object,
 ) -> str:
     """이미 퍼센트 단위인 값을 표시합니다."""
 
@@ -160,11 +165,27 @@ def format_percentage_value(
     if number is None:
         return "정보 없음"
 
-    return f"{number:,.2f}%"
+    return format_percent(number)
+
+
+def format_percent(
+    value: object,
+    *,
+    decimal_input: bool = False,
+    signed: bool = False,
+) -> str:
+    """Format a percentage consistently with one decimal place."""
+    number = safe_float(value)
+    if number is None:
+        return "-"
+    if decimal_input:
+        number *= 100
+    sign = "+" if signed and number > 0 else ""
+    return f"{sign}{number:,.1f}%"
 
 
 def format_number(
-    value: float | int | None,
+    value: object,
     suffix: str = "",
     decimal_places: int = 0,
 ) -> str:
