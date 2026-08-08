@@ -37,15 +37,16 @@ _LOCAL_USER_COMPONENT = components_v2.component(
     "assetos_local_user",
     js="""
     export default function(component) {
-        const { data, setStateValue, parentElement } = component;
+        const { data, setStateValue } = component;
         let value = window.localStorage.getItem(data.storageKey);
         const pattern = new RegExp(data.pattern);
         if (!pattern.test(value || '')) {
             value = data.candidate;
             window.localStorage.setItem(data.storageKey, value);
         }
-        parentElement.style.display = 'none';
-        setStateValue('user_id', value);
+        if (data.currentValue !== value) {
+            setStateValue('user_id', value);
+        }
     }
     """,
 )
@@ -54,11 +55,14 @@ _LOCAL_USER_COMPONENT = components_v2.component(
 def get_browser_local_user_id() -> str | None:
     """Read or create the stable browser UUID through localStorage."""
     candidate = st.session_state.setdefault("assetos_local_user_candidate", generate_local_user_id())
+    component_state = st.session_state.get("assetos_local_user_component", {})
+    current_value = component_state.get("user_id") if isinstance(component_state, dict) else None
     result = _LOCAL_USER_COMPONENT(
         data={
             "storageKey": LOCAL_STORAGE_KEY,
             "candidate": candidate,
             "pattern": _UUID_PATTERN.pattern,
+            "currentValue": current_value,
         },
         default={"user_id": None},
         on_user_id_change=lambda: None,
